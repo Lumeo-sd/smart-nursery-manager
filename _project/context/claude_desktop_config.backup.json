@@ -1,0 +1,69 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "Windows-MCP": {
+      "command": "C:\\Users\\Admin\\.local\\bin\\uvx.exe",
+      "args": ["windows-mcp"]
+    },
+    "erpnext": {
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "MCP_TRANSPORT=stdio",
+        "-e", "ERPNEXT_URL=http://host.docker.internal:8080",
+        "-e", "ERPNEXT_API_KEY=63a81cb4abeb0b9",
+        "-e", "ERPNEXT_API_SECRET=a9cdbfbb49493cd",
+        "erpnext-mcp-final-erpnext-mcp"
+      ]
+    },
+    "memory": {
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": ["run", "-i", "--rm", "-v", "/local-directory:/local-directory", "mcp/memory"]
+    },
+    "github": {
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "mcp/github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+      }
+    },
+    "opensprinkler": {
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "OPEN_SPRINKLER_HOST=192.168.1.100",
+        "-e", "OPEN_SPRINKLER_PASSWORD=your_password",
+        "opensprinkler-mcp"
+      ]
+    },
+    "youtube_transcript": {
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": ["run", "-i", "--rm", "mcp/youtube-transcript"]
+    },
+    "linkwarden": {
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": [
+        "run", "--rm", "-i",
+        "--network", "linkwarden_linkwarden_net",
+        "-e", "LINKWARDEN_URL=http://linkwarden:3000",
+        "-e", "LINKWARDEN_TOKEN=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..fesdL8ccx0_Xn4bW.8RYabfcUTTLvvz6iur5PKc86WMRXMwUVlYeZRuwwjyXV0CRKiOCEHF5IkSl36vIah08wfJjGzfFABGZx1UY1Mj6IJp8_rkyKyT-EYAQlrfKakoO9Tm4p.baD5LLk9Ni_ogVqJ5Aq3oA",
+        "linkwarden-mcp-server-linkwarden-mcp"
+      ]
+    },
+    "time": {
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": ["run", "-i", "--rm", "mcp/time"]
+    }
+  },
+  "preferences": {
+    "coworkWebSearchEnabled": true,
+    "coworkScheduledTasksEnabled": false,
+    "ccdScheduledTasksEnabled": false,
+    "sidebarMode": "chat",
+    "menuBarEnabled": false
+  },
+  "globalShortcut": ""
+}
