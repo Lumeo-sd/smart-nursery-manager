@@ -1,0 +1,24 @@
+2026-03-11 18:08:00,394 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'doctype': 'Company', 'limit_page_length': '5', 'fields': ['name', 'company_name', 'default_currency', 'country', 'abbr']}
+2026-03-11 18:34:39,021 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'doctype': 'DocType', 'limit_page_length': '20', 'filters': '[["custom","=",1]]', 'fields': ['name', 'creation']}
+2026-03-11 19:02:00,468 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'doctype': 'Company', 'limit_page_length': '20', 'fields': ['name', 'abbr', 'default_currency', 'country']}
+2026-03-11 20:03:24,831 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'doctype': 'Company', 'limit_page_length': '20', 'fields': ['name', 'abbr', 'default_currency', 'country']}
+2026-03-11 21:03:37,131 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'doctype': 'Plant Batch', 'limit_page_length': '50', 'fields': ['name', 'batch_title', 'status', 'plant_variety', 'quantity_start', 'quantity_current', 'quantity_lost', 'pot_size', 'current_location', 'start_date', 'expected_ready_date', 'total_cost', 'cost_per_plant']}
+2026-03-11 21:26:09,820 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'event_date': '2026-03-11', 'batch': 'rmc6fnodlo', 'event_type': '☠️ Списання (загибели)', 'quantity_lost': 5, 'loss_reason': 'Не вкорінилось', 'cost': 0, 'notes': 'Тест: 5 живців не вкорінилось, перевірка Server Script', 'doctype': 'Batch Event'}
+2026-03-11 21:28:06,807 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'event_date': '2026-03-11', 'batch': 'rmc6fnodlo', 'event_type': '☠️ Списання (загибели)', 'quantity_lost': 5, 'loss_reason': 'Не вкорінилось', 'cost': 0, 'notes': 'Тест: 5 живців не вкорінилось', 'doctype': 'Batch Event'}
+2026-03-11 21:53:59,876 ERROR frappe New Exception collected in error log
+Site: frontend
+Form Dict: {'doctype': 'Stock Entry', 'name': 'MAT-STE-2026-00001', 'cmd': 'frappe.client.submit'}
