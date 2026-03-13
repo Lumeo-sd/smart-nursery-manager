@@ -8,27 +8,30 @@ const STATUS_COLOR = {
   'Зростання':         'orange',
   'Живцювання':        'yellow',
 }
-
 const STATUS_ICON = {
   'Готова до продажу': '✅',
   'Укорінення':        '🌱',
   'Зростання':         '🪴',
   'Живцювання':        '✂️',
 }
-
-const ACTION_TITLE = {
-  event:    { icon: '💧', text: 'Оберіть партію для події' },
+const ACTION_EVENT = {
+  event:    'Підгодівля',
+  writeoff: 'Списання',
+  repot:    'Пересадка',
+}
+const ACTION_HEADER = {
+  event:    { icon: '💧', text: 'Для якої партії?' },
   writeoff: { icon: '☠️', text: 'Яку партію списати?' },
-  repot:    { icon: '🪴', text: 'Яку пересаджуємо?' },
+  repot:    { icon: '🌱', text: 'Яку пересаджуємо?' },
 }
 
 export default function BatchList() {
   const [batches, setBatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [params] = useSearchParams()
-  const navigate = useNavigate()
-  const action = params.get('action')
+  const [error, setError]     = useState(null)
+  const [params]              = useSearchParams()
+  const navigate              = useNavigate()
+  const action                = params.get('action')
 
   useEffect(() => {
     getBatches()
@@ -39,11 +42,11 @@ export default function BatchList() {
 
   const handleBatch = (batch) => {
     if (!action) return
-    const typeMap = { event: 'Підживлення', writeoff: 'Списання', repot: 'Пересадка' }
-    navigate(`/event/${batch.name}/${typeMap[action]}?title=${encodeURIComponent(batch.batch_title)}`)
+    const eventType = ACTION_EVENT[action]
+    navigate(`/event/${batch.name}/${eventType}?title=${encodeURIComponent(batch.batch_title || batch.name)}`)
   }
 
-  const header = ACTION_TITLE[action] || { icon: '🌿', text: 'Всі партії' }
+  const header = ACTION_HEADER[action] || { icon: '🌿', text: 'Всі партії' }
 
   return (
     <div className="screen">
@@ -51,9 +54,9 @@ export default function BatchList() {
         <div className="back-btn" onClick={() => navigate('/')}>‹</div>
         <h2 className="screen-title">{header.icon} {header.text}</h2>
       </div>
-
       <div className="content">
         {loading && <div className="loading">Завантаження...</div>}
+
         {error && (
           <div className="card" style={{ borderColor: 'var(--red)', textAlign: 'center' }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
@@ -63,19 +66,12 @@ export default function BatchList() {
         )}
 
         {batches.map(b => {
-          const color = STATUS_COLOR[b.status] || 'blue'
-          const statusIcon = STATUS_ICON[b.status] || '📦'
+          const color      = STATUS_COLOR[b.status] || 'blue'
+          const statusIcon = STATUS_ICON[b.status]  || '📦'
           return (
-            <div
-              key={b.name}
-              className="card"
-              style={{
-                cursor: action ? 'pointer' : 'default',
-                borderLeft: `3px solid var(--${color})`,
-                paddingLeft: 16,
-              }}
-              onClick={() => action && handleBatch(b)}
-            >
+            <div key={b.name} className="card"
+              style={{ cursor: action ? 'pointer' : 'default', borderLeft: `3px solid var(--${color})`, paddingLeft: 16 }}
+              onClick={() => action && handleBatch(b)}>
               <div className="card-row" style={{ marginBottom: 6 }}>
                 <div className="card-title">{b.batch_title || b.name}</div>
                 <span className={`badge ${color !== 'green' ? color : ''}`}>
@@ -85,9 +81,7 @@ export default function BatchList() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Chip>{statusIcon} {b.status}</Chip>
                 {b.current_location && <Chip>📍 {b.current_location}</Chip>}
-                {b.cost_per_plant > 0 && (
-                  <Chip>💰 {b.cost_per_plant.toFixed(2)} грн/шт</Chip>
-                )}
+                {b.cost_per_plant > 0 && <Chip>💰 {b.cost_per_plant.toFixed(2)} грн</Chip>}
               </div>
             </div>
           )
@@ -107,14 +101,9 @@ export default function BatchList() {
 function Chip({ children }) {
   return (
     <span style={{
-      background: 'var(--surface-2)',
-      borderRadius: 100,
-      padding: '3px 10px',
-      fontSize: 12,
-      color: 'var(--text-2)',
-      whiteSpace: 'nowrap',
-    }}>
-      {children}
-    </span>
+      background: 'var(--surface-2)', borderRadius: 100,
+      padding: '3px 10px', fontSize: 12,
+      color: 'var(--text-2)', whiteSpace: 'nowrap',
+    }}>{children}</span>
   )
 }
