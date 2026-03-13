@@ -72,7 +72,6 @@ export async function createPlantBatch(fields) {
   return postResource('Plant Batch', fields)
 }
 
-// ВАЖЛИВО: поле "batch", а не "batch_id"!
 export async function createBatchEvent(batchId, eventTypeKey, data = {}) {
   return postResource('Batch Event', {
     batch: batchId,
@@ -93,46 +92,85 @@ export async function getItemPrices() {
   })
 }
 
+// ── POS Opening Entry ─────────────────────────────────────
+/**
+ * Перевіряє чи є відкрита зміна на сьогодні.
+ * Якщо немає — створює і підтверджує нову автоматично.
+ */
+export async function ensurePosOpen() {
+  const today = new Date().toISOString().split('T')[0]
+
+  const existing = await getResource('POS Opening Entry', {
+    fields: JSON.stringify(['name', 'status', 'posting_date']),
+    filters: JSON.stringify([
+      ['status', '=', 'Open'],
+      ['posting_date', '=', today],
+      ['pos_profile', '=', 'Розсадник - Роздріб'],
+    ]),
+    limit: 1,
+  })
+
+  if (existing && existing.length > 0) return existing[0].name
+
+  // Нова зміна
+  const draft = await postResource('POS Opening Entry', {
+    pos_profile:       'Розсадник - Роздріб',
+    user:              'p3sy@proton.me',
+    company:           'SDR',
+    posting_date:      today,
+    period_start_date: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    balance_details: [{
+      mode_of_payment: 'Cash',
+      opening_amount:  0,
+    }],
+  })
+
+  await callMethod('frappe.client.submit', {
+    doc: { doctype: 'POS Opening Entry', name: draft.name },
+  })
+
+  return draft.name
+}
+
 // ── Продаж ────────────────────────────────────────────────
 /**
- * Створює і відразу підтверджує (submit) Sales Invoice.
+ * Гарантує відкриту POS зміну, потім створює і підтверджує Sales Invoice.
  * cartLines: [{ item_code, qty, rate }]
- * total: загальна сума (грн)
  */
 export async function createAndSubmitSale(cartLines, total) {
-  // 1. Створити чернетку
+  await ensurePosOpen()
+
   const draft = await postResource('Sales Invoice', {
-    company: 'SDR',
-    customer: 'Роздрібний покупець',
-    posting_date: new Date().toISOString().split('T')[0],
-    is_pos: 1,
-    pos_profile: 'Розсадник - Роздріб',
+    company:              'SDR',
+    customer:             'Роздрібний покупець',
+    posting_date:         new Date().toISOString().split('T')[0],
+    is_pos:               1,
+    pos_profile:          'Розсадник - Роздріб',
     is_created_using_pos: 1,
-    update_stock: 1,
-    set_warehouse: 'Теплиця А (холодна) - SDR',
-    currency: 'UAH',
-    selling_price_list: '🛍️ Роздрібна ціна',
+    update_stock:         1,
+    set_warehouse:        'Теплиця А (холодна) - SDR',
+    currency:             'UAH',
+    selling_price_list:   '🛍️ Роздрібна ціна',
     items: cartLines.map(l => ({
       item_code: l.item_code,
-      qty: l.qty,
-      rate: l.rate,
+      qty:       l.qty,
+      rate:      l.rate,
       warehouse: 'Теплиця А (холодна) - SDR',
     })),
     payments: [{
       mode_of_payment: 'Cash',
-      amount: total,
-      account: 'Cash - SDR',
-      type: 'Cash',
-      default: 1,
+      amount:          total,
+      account:         'Cash - SDR',
+      type:            'Cash',
+      default:         1,
     }],
   })
 
-  // 2. Підтвердити (submit)
   await callMethod('frappe.client.submit', {
     doc: { doctype: 'Sales Invoice', name: draft.name },
   })
 
-  return draft.name  // напр. "ACC-SINV-2026-00002"
+  return draft.name
 }
 
 // ── Дашборд ───────────────────────────────────────────────
