@@ -18,10 +18,18 @@ export const EVENT_TYPES = {
   'Мульчування':   '🌾 Мульчування',
 }
 
+// ── низькорівневі ──────────────────────────────────────────
 async function getResource(doctype, params = {}) {
   const qs = new URLSearchParams(params).toString()
   const res = await fetch(`/api/api/resource/${encodeURIComponent(doctype)}?${qs}`)
   if (!res.ok) throw new Error(`GET ${doctype}: ${res.status}`)
+  return (await res.json()).data
+}
+
+// GET одного документу по імені — повертає повний doc з актуальним modified
+async function getDoc(doctype, name) {
+  const res = await fetch(`/api/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`)
+  if (!res.ok) throw new Error(`GET ${doctype}/${name}: ${res.status}`)
   return (await res.json()).data
 }
 
@@ -51,6 +59,16 @@ async function callMethod(method, args = {}) {
     throw new Error(msg)
   }
   return (await res.json()).message
+}
+
+/**
+ * Після create ERPNext оновлює modified через хуки.
+ * Треба GET свіжий doc → submit з актуальним modified.
+ * Інакше: TimestampMismatchError
+ */
+async function submitDoc(doctype, name) {
+  const fresh = await getDoc(doctype, name)
+  return callMethod('frappe.client.submit', { doc: fresh })
 }
 
 // ── Партії ────────────────────────────────────────────────
@@ -93,15 +111,11 @@ export async function getItemPrices() {
 }
 
 // ── POS Opening Entry ─────────────────────────────────────
-/**
- * Перевіряє чи є відкрита зміна на сьогодні.
- * Якщо немає — створює і підтверджує нову автоматично.
- */
 export async function ensurePosOpen() {
   const today = new Date().toISOString().split('T')[0]
 
   const existing = await getResource('POS Opening Entry', {
-    fields: JSON.stringify(['name', 'status', 'posting_date']),
+    fields: JSON.stringify(['name']),
     filters: JSON.stringify([
       ['status', '=', 'Open'],
       ['posting_date', '=', today],
@@ -109,34 +123,22 @@ export async function ensurePosOpen() {
     ]),
     limit: 1,
   })
-
   if (existing && existing.length > 0) return existing[0].name
 
-  // Нова зміна
   const draft = await postResource('POS Opening Entry', {
     pos_profile:       'Розсадник - Роздріб',
     user:              'p3sy@proton.me',
     company:           'SDR',
     posting_date:      today,
     period_start_date: new Date().toISOString().replace('T', ' ').substring(0, 19),
-    balance_details: [{
-      mode_of_payment: 'Cash',
-      opening_amount:  0,
-    }],
+    balance_details:   [{ mode_of_payment: 'Cash', opening_amount: 0 }],
   })
 
-  await callMethod('frappe.client.submit', {
-    doc: { doctype: 'POS Opening Entry', name: draft.name },
-  })
-
+  await submitDoc('POS Opening Entry', draft.name)
   return draft.name
 }
 
 // ── Продаж ────────────────────────────────────────────────
-/**
- * Гарантує відкриту POS зміну, потім створює і підтверджує Sales Invoice.
- * cartLines: [{ item_code, qty, rate }]
- */
 export async function createAndSubmitSale(cartLines, total) {
   await ensurePosOpen()
 
@@ -166,10 +168,8 @@ export async function createAndSubmitSale(cartLines, total) {
     }],
   })
 
-  await callMethod('frappe.client.submit', {
-    doc: { doctype: 'Sales Invoice', name: draft.name },
-  })
-
+  // GET свіжий doc → submit з актуальним modified
+  await submitDoc('Sales Invoice', draft.name)
   return draft.name
 }
 
