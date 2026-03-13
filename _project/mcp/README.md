@@ -1,43 +1,50 @@
 # MCP Modules — Реєстр
 
-Кожна підпапка = окремий MCP сервер.
-
 ## ✅ Активні модулі
 
 | Папка | Порт | Призначення | Статус |
 |---|---|---|---|
-| `erpnext/` | 8000 | ERPNext API → Claude (DocTypes, POS, Stock) | ✅ запущений |
-| `sequentialthinking/` | stdio | Покрокове мислення для складних задач | ✅ підключений |
-| `mcp-memory/` | stdio | Персистентна пам'ять між сесіями | ✅ підключений |
-| `opensprinkler-mcp-sdr/` | stdio | Керування поливом (OpenSprinkler) | ✅ підключений |
-| `time/` | stdio | Поточний час, конвертація часових зон | ✅ підключений |
+| `erpnext/` | 8000 | ERPNext API → Claude | ✅ запущений |
+| `sequentialthinking/` | stdio | Покрокове мислення | ✅ підключений |
+| `mcp-memory/` | stdio | Пам'ять між сесіями | ✅ підключений |
+| `opensprinkler-mcp-sdr/` | stdio | Керування поливом | ⚠️ потребує IP |
+| `time/` | stdio | Час Europe/Kyiv | ✅ додано в конфіг |
+| `weather/` | stdio | Погода та якість повітря (Open-Meteo) | ✅ встановлено |
 
-## 📋 GitHub MCP
-Підключений напряму через Claude — не потребує Docker.
-Дає доступ до репо `Lumeo-sd/lumeo-nursery` прямо з чату.
+## 🚧 В розробці
 
-## 🗂️ Архів
+| Папка | Призначення | Статус |
+|---|---|---|
+| `backup` | ERPNext dump → Google Drive | 🔄 планується |
 
-| Папка | Примітка |
-|---|---|
-| `erpnext-mcp-final/` | Старий оригінал — залишений для довідки |
+## ☁️ Хмарні (без Docker)
 
-## Як додати новий модуль
+| Модуль | Призначення | Статус |
+|---|---|---|
+| `github` | Репо Lumeo-sd/smart-nursery-manager | ⚠️ токен від іншого акаунту — замінити |
+| `youtube_transcript` | Транскрипти YouTube | ✅ підключений |
+| `linkwarden` | Менеджер закладок | ✅ підключений |
+| `Windows-MCP` | Файли, PowerShell | ✅ підключений |
 
-1. Створи папку: `mcp/назва-модуля/`
-2. Додай `Dockerfile` або `package.json`
-3. Додай запис в таблицю вище
-4. Створи `skills/SKILL_назва.md`
+## 📋 TODO (нові модулі)
+
+| Модуль | Пріоритет | Для чого |
+|---|---|---|
+| `backup` | 🟡 Середній | ERPNext dump → Google Drive / локально |
+| `telegram-bot` | 🟢 Низький | Ранковий дайджест в Telegram |
 
 ## Архітектура підключення
 
 ```
 Claude Desktop
-    │
-    ├── erpnext MCP     → HTTP :8000 → Docker → ERPNext :8080
-    ├── memory MCP      → stdio (Docker image)
-    ├── sequentialthinking → stdio (Node.js)
-    ├── opensprinkler   → stdio → OpenSprinkler контролер
-    ├── time            → stdio (Python)
-    └── github MCP      → GitHub API (через claude.ai)
+    ├── erpnext       → HTTP :8000 → Docker → ERPNext :8080
+    ├── memory        → Docker stdio (mcp/memory image)
+    ├── sequentialthinking → npx stdio
+    ├── opensprinkler → Docker stdio → OpenSprinkler WiFi
+    ├── time          → Docker stdio (mcp/time image)
+    ├── weather       → pip install mcp-weather-server → stdio → Open-Meteo API
+    ├── github        → Docker stdio → GitHub API
+    ├── youtube       → Docker stdio
+    ├── linkwarden    → Docker → Linkwarden сервер
+    └── Windows-MCP   → uvx stdio → Windows system
 ```

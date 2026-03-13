@@ -1,0 +1,14 @@
+# Browser Debug MCP
+# Usage: 
+# 1. Start Brave/Chrome with: brave.exe --remote-debugging-port=9222
+# 2. docker-compose up -d
+
+services:
+  browser-debug-mcp:
+    build: .
+    container_name: browser-debug-mcp
+    environment:
+      - CHROME_URL=ws://localhost:9222
+    network_mode: "host"
+    stdin_open: true
+    tty: true

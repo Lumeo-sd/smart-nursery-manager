@@ -1,0 +1,9 @@
+services:
+  nursery-pwa:
+    build: .
+    container_name: nursery-pwa
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
