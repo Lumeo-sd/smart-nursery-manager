@@ -1,14 +1,23 @@
 /**
  * ERPNext REST API wrapper
- *
- * Використовує /api/resource/ (REST) замість /api/method/ (RPC)
- * Перевага: GET-запити не потребують CSRF токена
- * Authorization додається в vite.config.js через proxy.configure
+ * GET /api/resource/ — без CSRF (token auth)
+ * POST /api/resource/ — теж без CSRF з token auth
+ * Authorization вставляється vite.config.js proxy.configure()
  */
 
-// ── helpers ───────────────────────────────────────────────
 const cleanLoc = (loc) =>
   loc ? loc.replace(/\s*-\s*SDR\s*$/, '').trim() : '—'
+
+// Типи подій — точно як у Select в ERPNext (з емодзі!)
+export const EVENT_TYPES = {
+  'Підгодівля':    '💧 Підгодівля',
+  'Обробка':       '🧪 Обробка (пестицид/фунгіцид)',
+  'Пересадка':     '🌱 Пересадка',
+  'Переміщення':   '📍 Переміщення',
+  'Списання':      '☠️ Списання (загибели)',
+  'Спостереження': '📝 Спостереження',
+  'Мульчування':   '🌾 Мульчування',
+}
 
 async function getResource(doctype, params = {}) {
   const qs = new URLSearchParams(params).toString()
@@ -25,8 +34,11 @@ async function postResource(doctype, body) {
     body: JSON.stringify(body)
   })
   if (!res.ok) {
-    let msg = `POST ${doctype}: ${res.status}`
-    try { const j = await res.json(); msg = j.exception || j.exc_type || msg } catch {}
+    let msg = `${res.status}`
+    try {
+      const j = await res.json()
+      msg = j.exception || j.exc_type || j._server_messages || msg
+    } catch {}
     throw new Error(msg)
   }
   const data = await res.json()
@@ -52,9 +64,11 @@ export async function createPlantBatch(fields) {
   return postResource('Plant Batch', fields)
 }
 
-export async function createBatchEvent(batchId, eventType, data = {}) {
+// ВАЖЛИВО: поле "batch", а не "batch_id"!
+export async function createBatchEvent(batchId, eventTypeKey, data = {}) {
+  const eventType = EVENT_TYPES[eventTypeKey] || eventTypeKey
   return postResource('Batch Event', {
-    batch_id: batchId,
+    batch: batchId,
     event_type: eventType,
     event_date: new Date().toISOString().split('T')[0],
     quantity_lost: 0,
