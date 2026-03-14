@@ -1,0 +1,44 @@
+2026-03-11 16:13:40,515 INFO /usr/local/bin/bench set-config -g db_host db
+2026-03-11 16:13:41,815 INFO /usr/local/bin/bench set-config -gp db_port 3306
+2026-03-11 16:13:42,801 INFO /usr/local/bin/bench set-config -g redis_cache redis://redis-cache:6379
+2026-03-11 16:13:43,858 INFO /usr/local/bin/bench set-config -g redis_queue redis://redis-queue:6379
+2026-03-11 16:13:44,911 INFO /usr/local/bin/bench set-config -g redis_socketio redis://redis-queue:6379
+2026-03-11 16:13:46,174 INFO /usr/local/bin/bench set-config -gp socketio_port 9000
+2026-03-11 16:14:03,012 INFO /usr/local/bin/bench set-config -g db_host db
+2026-03-11 16:14:03,240 INFO /usr/local/bin/bench worker --queue long,default,short
+2026-03-11 16:14:03,338 INFO /usr/local/bin/bench schedule
+2026-03-11 16:14:03,706 INFO /usr/local/bin/bench worker --queue short,default
+2026-03-11 16:14:08,004 INFO /usr/local/bin/bench set-config -gp db_port 3306
+2026-03-11 16:14:09,810 INFO /usr/local/bin/bench set-config -g redis_cache redis://redis-cache:6379
+2026-03-11 16:14:11,722 INFO /usr/local/bin/bench set-config -g redis_queue redis://redis-queue:6379
+2026-03-11 16:14:12,854 INFO /usr/local/bin/bench set-config -g redis_socketio redis://redis-queue:6379
+2026-03-11 16:14:13,978 INFO /usr/local/bin/bench set-config -gp socketio_port 9000
+2026-03-11 16:14:51,698 INFO /usr/local/bin/bench set-config -g db_host db
+2026-03-11 16:14:52,438 INFO /usr/local/bin/bench new-site --mariadb-user-host-login-scope=% --admin-password=admin --db-root-username=root --db-root-password=admin --install-app erpnext --set-default frontend
+2026-03-11 16:14:52,839 INFO /usr/local/bin/bench set-config -gp db_port 3306
+2026-03-11 16:14:53,971 INFO /usr/local/bin/bench set-config -g redis_cache redis://redis-cache:6379
+2026-03-11 16:14:55,085 INFO /usr/local/bin/bench set-config -g redis_queue redis://redis-queue:6379
+2026-03-11 16:14:56,672 INFO /usr/local/bin/bench set-config -g redis_socketio redis://redis-queue:6379
+2026-03-11 16:14:58,261 INFO /usr/local/bin/bench set-config -gp socketio_port 9000
+2026-03-11 21:13:50,567 INFO /usr/local/bin/bench --site frontend execute frappe.db.sql --args {query:
+2026-03-11 21:15:18,397 INFO /usr/local/bin/bench set-config -g server_script_enabled true
+2026-03-11 21:15:57,099 INFO /usr/local/bin/bench worker --queue short,default
+2026-03-11 21:15:57,706 INFO /usr/local/bin/bench worker --queue long,default,short
+2026-03-11 21:15:59,142 INFO /usr/local/bin/bench schedule
+2026-03-11 22:34:40,898 INFO /usr/local/bin/bench schedule
+2026-03-12 09:22:19,724 INFO /usr/local/bin/bench worker --queue short,default
+2026-03-12 09:22:19,724 INFO /usr/local/bin/bench set-config -g db_host db
+2026-03-12 09:22:19,724 INFO /usr/local/bin/bench worker --queue long,default,short
+2026-03-12 09:22:19,839 INFO /usr/local/bin/bench schedule
+2026-03-12 09:22:21,622 INFO /usr/local/bin/bench set-config -gp db_port 3306
+2026-03-12 09:22:22,795 INFO /usr/local/bin/bench set-config -g redis_cache redis://redis-cache:6379
+2026-03-12 09:22:23,854 INFO /usr/local/bin/bench set-config -g redis_queue redis://redis-queue:6379
+2026-03-12 09:22:25,059 INFO /usr/local/bin/bench set-config -g redis_socketio redis://redis-queue:6379
+2026-03-12 09:22:26,291 INFO /usr/local/bin/bench set-config -gp socketio_port 9000
+2026-03-12 09:22:42,499 INFO /usr/local/bin/bench new-site --mariadb-user-host-login-scope=% --admin-password=admin --db-root-username=root --db-root-password=admin --install-app erpnext --set-default frontend
+2026-03-12 10:24:41,379 INFO /usr/local/bin/bench worker --queue short,default
+2026-03-12 10:24:41,932 INFO /usr/local/bin/bench worker --queue long,default,short
+2026-03-12 10:24:43,456 INFO /usr/local/bin/bench schedule
+2026-03-13 14:50:12,990 INFO /usr/local/bin/bench worker --queue long,default,short
+2026-03-13 14:50:12,990 INFO /usr/local/bin/bench worker --queue short,default
+2026-03-13 14:50:12,990 INFO /usr/local/bin/bench schedule

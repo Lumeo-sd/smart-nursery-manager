@@ -1,0 +1,43 @@
+# ===================================================
+# LUMEO NURSERY — .gitignore
+# ===================================================
+
+# --- СЕКРЕТИ (НІКОЛИ не комітити) ---
+**/.env
+**/frappe_api_keys.csv
+*.secret
+*.key
+
+# --- MCP бінарники і кеш ---
+mcp/mcp-memory/blobs/
+mcp/mcp-memory/oci-layout
+mcp/**/__pycache__/
+mcp/**/node_modules/
+mcp/**/*.pyc
+mcp/**/dist/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# --- Node ---
+node_modules/
+dist/
+build/
+.npm
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Архів (великий, не критичний) ---
+scripts/archive/

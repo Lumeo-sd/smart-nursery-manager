@@ -1,0 +1,21 @@
+services:
+  erpnext-mcp:
+    build: .
+    container_name: erpnext-mcp
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ERPNEXT_URL: ${ERPNEXT_URL:-http://host.docker.internal:8080}
+      ERPNEXT_API_KEY: ${ERPNEXT_API_KEY}
+      ERPNEXT_API_SECRET: ${ERPNEXT_API_SECRET}
+      MCP_TRANSPORT: streamable-http
+      PORT: 8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/mcp')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
