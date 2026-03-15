@@ -9,10 +9,10 @@ const STATUS_COLOR = {
   'Живцювання':        'yellow',
 }
 const STATUS_ICON = {
-  'Готова до продажу': '✅',
-  'Укорінення':        '🌱',
-  'Зростання':         '🪴',
-  'Живцювання':        '✂️',
+  'Готова до продажу': '●',
+  'Укорінення':        '◐',
+  'Зростання':         '◔',
+  'Живцювання':        '◌',
 }
 const ACTION_EVENT = {
   event:    'Підгодівля',
@@ -20,9 +20,9 @@ const ACTION_EVENT = {
   repot:    'Пересадка',
 }
 const ACTION_HEADER = {
-  event:    { icon: '💧', text: 'Для якої партії?' },
-  writeoff: { icon: '☠️', text: 'Яку партію списати?' },
-  repot:    { icon: '🌱', text: 'Яку пересаджуємо?' },
+  event:    { icon: '○', text: 'Для якої партії?' },
+  writeoff: { icon: '×', text: 'Яку партію списати?' },
+  repot:    { icon: '◧', text: 'Яку пересаджуємо?' },
 }
 
 export default function BatchList() {
@@ -46,7 +46,7 @@ export default function BatchList() {
     navigate(`/event/${batch.name}/${eventType}?title=${encodeURIComponent(batch.batch_title || batch.name)}`)
   }
 
-  const header = ACTION_HEADER[action] || { icon: '🌿', text: 'Всі партії' }
+  const header = ACTION_HEADER[action] || { icon: '▦', text: 'Всі партії' }
 
   return (
     <div className="screen">
@@ -59,7 +59,7 @@ export default function BatchList() {
 
         {error && (
           <div className="card" style={{ borderColor: 'var(--red)', textAlign: 'center' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>!</div>
             <div className="card-title" style={{ color: 'var(--red)' }}>Немає з'єднання</div>
             <div className="card-sub" style={{ marginTop: 4 }}>{error}</div>
           </div>
@@ -67,7 +67,7 @@ export default function BatchList() {
 
         {batches.map(b => {
           const color      = STATUS_COLOR[b.status] || 'blue'
-          const statusIcon = STATUS_ICON[b.status]  || '📦'
+          const statusIcon = STATUS_ICON[b.status]  || '•'
           return (
             <div key={b.name} className="card"
               style={{ cursor: action ? 'pointer' : 'default', borderLeft: `3px solid var(--${color})`, paddingLeft: 16 }}
@@ -80,8 +80,8 @@ export default function BatchList() {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Chip>{statusIcon} {b.status}</Chip>
-                {b.current_location && <Chip>📍 {b.current_location}</Chip>}
-                {b.cost_per_plant > 0 && <Chip>💰 {b.cost_per_plant.toFixed(2)} грн</Chip>}
+                {b.current_location && <Chip>• {b.current_location}</Chip>}
+                {b.cost_per_plant > 0 && <Chip>₴ {b.cost_per_plant.toFixed(2)}</Chip>}
               </div>
             </div>
           )
@@ -89,7 +89,7 @@ export default function BatchList() {
 
         {!loading && !error && batches.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-2)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🌾</div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>○</div>
             <div>Партій поки немає</div>
           </div>
         )}

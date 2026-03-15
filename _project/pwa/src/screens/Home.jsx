@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { getDashboardStats } from '../api/erpnext.js'
 
 const TILES = [
-  { icon: '📋', label: 'Наявність',  sub: 'Всі партії',           path: '/batches',               color: 'blue'   },
-  { icon: '🌱', label: 'Живці',      sub: 'Нова партія',          path: '/new-batch',             color: 'green'  },
-  { icon: '🪴', label: 'Пересадка',  sub: 'В більший горщик',     path: '/batches?action=repot',  color: 'purple' },
-  { icon: '💧', label: 'Подія',      sub: 'Підживлення / обробка',path: '/batches?action=event',  color: 'yellow' },
-  { icon: '🛒', label: 'Продати',    sub: 'Швидкий продаж',       path: '/sale',                  color: 'orange' },
-  { icon: '☠️',  label: 'Списати',   sub: 'Загибель рослин',      path: '/batches?action=writeoff', color: 'red'  },
+  { icon: '▦', label: 'Наявність',  sub: 'Всі партії',                  path: '/batches',               color: 'blue'   },
+  { icon: '+', label: 'Живці',      sub: 'Нова партія',                 path: '/new-batch',             color: 'green'  },
+  { icon: '◧', label: 'Пересадка',  sub: 'В більший горщик',            path: '/batches?action=repot',  color: 'purple' },
+  { icon: '○', label: 'Подія',      sub: 'Підживлення / обробка',       path: '/batches?action=event',  color: 'yellow' },
+  { icon: '◼', label: 'Продати',    sub: 'Швидкий продаж',              path: '/sale',                  color: 'orange' },
+  { icon: '×', label: 'Списати',    sub: 'Загибель рослин',             path: '/batches?action=writeoff', color: 'red'  },
 ]
 
 export default function Home() {
@@ -28,7 +28,7 @@ export default function Home() {
   return (
     <>
       <div className="header">
-        <h1>🌱 Розсадник</h1>
+        <h1>Розсадник</h1>
         <p className="subtitle">{dateStr}</p>
 
         {stats && (

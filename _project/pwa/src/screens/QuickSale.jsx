@@ -36,7 +36,7 @@ export default function QuickSale() {
           })
         setItems(saleItems)
       })
-      .catch(e => showToast('❌ ' + e.message))
+      .catch(e => showToast('× ' + e.message))
       .finally(() => setLoading(false))
   }, [])
 
@@ -57,7 +57,7 @@ export default function QuickSale() {
     if (!hasItems || saving) return
     const noPriceItem = cartItems.find(i => !i.price)
     if (noPriceItem) {
-      showToast(`⚠️ Немає ціни: ${noPriceItem.batchTitle}`)
+      showToast(`! Немає ціни: ${noPriceItem.batchTitle}`)
       return
     }
     setSaving(true)
@@ -77,24 +77,23 @@ export default function QuickSale() {
       })
       setCart({})
     } catch (e) {
-      showToast('❌ ' + e.message)
+      showToast('× ' + e.message)
     } finally {
       setSaving(false)
     }
   }
 
-  // ── Екран успіху ──────────────────────────────────────
   if (result) {
     return (
       <div className="screen">
         <div className="content" style={{ textAlign: 'center', paddingTop: 60 }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>✓</div>
           <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Продаж оформлено!</div>
           <div style={{ color: 'var(--green)', fontSize: 32, fontWeight: 800, marginBottom: 24 }}>
             {result.total} грн
           </div>
           <div className="card" style={{ textAlign: 'left', marginBottom: 24 }}>
-            <div className="card-sub" style={{ marginBottom: 8 }}>📄 {result.invoiceNo}</div>
+            <div className="card-sub" style={{ marginBottom: 8 }}>№ {result.invoiceNo}</div>
             {result.lines.map((l, i) => (
               <div key={i} style={{
                 padding: '6px 0',
@@ -105,24 +104,23 @@ export default function QuickSale() {
           </div>
           <button className="btn btn-primary"
             onClick={() => { setResult(null); navigate('/') }}>
-            🏠 На головну
+            На головну
           </button>
           <button className="btn btn-ghost" style={{ marginTop: 10 }}
             onClick={() => setResult(null)}>
-            ➕ Ще один продаж
+            Ще один продаж
           </button>
         </div>
       </div>
     )
   }
 
-  // ── Основний екран ────────────────────────────────────
   return (
     <div className="screen">
       {toast && <div className="toast">{toast}</div>}
       <div className="screen-header">
         <div className="back-btn" onClick={() => navigate(-1)}>‹</div>
-        <h2 className="screen-title">🛒 Продаж</h2>
+        <h2 className="screen-title">Продаж</h2>
         {hasItems && (
           <div style={{ color: 'var(--green)', fontWeight: 700, fontSize: 16 }}>
             {total} грн
@@ -135,7 +133,7 @@ export default function QuickSale() {
 
         {!loading && items.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-2)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🌾</div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>○</div>
             <div style={{ fontSize: 17, fontWeight: 600 }}>Нічого продавати</div>
             <div style={{ fontSize: 14, marginTop: 6 }}>
               Немає партій зі статусом "Готова до продажу"
@@ -156,9 +154,9 @@ export default function QuickSale() {
                   <div className="card-sub">
                     {item.price > 0
                       ? `${item.price} грн/шт`
-                      : <span style={{ color: 'var(--orange)' }}>⚠️ ціна не вказана</span>}
-                    {' · '}є: {item.available} шт
-                    {item.location && ` · 📍${item.location}`}
+                      : <span style={{ color: 'var(--orange)' }}>! Ціна не вказана</span>}
+                    {' · '}Є: {item.available} шт
+                    {item.location && ` · •${item.location}`}
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -172,7 +170,8 @@ export default function QuickSale() {
                   )}
                   <CountBtn
                     onClick={() => add(item.batchId, item.available)}
-                    label="+" primary
+                    label="+"
+                    primary
                     disabled={qty >= item.available || !item.price}
                   />
                 </div>
@@ -207,7 +206,7 @@ export default function QuickSale() {
           ))}
           <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }} />
           <button className="btn btn-primary" onClick={handleSell} disabled={saving}>
-            {saving ? '⏳ Оформлення...' : `💰 Продати — ${total} грн`}
+            {saving ? 'Оформлення...' : `Оформити — ${total} грн`}
           </button>
         </div>
       )}

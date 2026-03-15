@@ -3,12 +3,12 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createBatchEvent } from '../api/erpnext.js'
 
 const EVENT_CONFIG = {
-  'Підгодівля':    { icon: '💧', color: 'yellow', hasQty: false, hasCost: true,  danger: false },
-  'Обробка':       { icon: '🧪', color: 'blue',   hasQty: false, hasCost: true,  danger: false },
-  'Пересадка':     { icon: '🌱', color: 'purple', hasQty: false, hasCost: true,  danger: false },
-  'Спостереження': { icon: '📝', color: 'green',  hasQty: false, hasCost: false, danger: false },
-  'Списання':      { icon: '☠️', color: 'red',    hasQty: true,  hasCost: false, danger: true  },
-  'Переміщення':   { icon: '📍', color: 'blue',   hasQty: false, hasCost: false, danger: false },
+  'Підгодівля':     { icon: '○', color: 'yellow', hasQty: false, hasCost: true,  danger: false },
+  'Обробка':        { icon: '◧', color: 'blue',   hasQty: false, hasCost: true,  danger: false },
+  'Пересадка':      { icon: '◩', color: 'purple', hasQty: false, hasCost: true,  danger: false },
+  'Спостереження':  { icon: '◔', color: 'green',  hasQty: false, hasCost: false, danger: false },
+  'Списання':       { icon: '×', color: 'red',    hasQty: true,  hasCost: false, danger: true  },
+  'Переміщення':    { icon: '◐', color: 'blue',   hasQty: false, hasCost: false, danger: false },
 }
 
 export default function BatchEvent() {
@@ -30,7 +30,7 @@ export default function BatchEvent() {
   const handleSave = async () => {
     if (saving) return
     if (type === 'Списання' && (!qty || parseInt(qty) < 1)) {
-      showToast('⚠️ Вкажи кількість загиблих')
+      showToast('! Вкажи кількість загиблих')
       return
     }
     setSaving(true)
@@ -40,10 +40,10 @@ export default function BatchEvent() {
         quantity_lost: qty ? parseInt(qty) : 0,
         cost: cost ? parseFloat(cost) : 0,
       })
-      showToast('✅ Збережено!')
+      showToast('✓ Збережено')
       setTimeout(() => navigate('/'), 1200)
     } catch (e) {
-      showToast('❌ ' + e.message)
+      showToast('× ' + e.message)
       setSaving(false)
     }
   }
@@ -61,17 +61,21 @@ export default function BatchEvent() {
           <div className="card-title" style={{ marginTop: 2 }}>{batchTitle}</div>
         </div>
 
-        {cfg.hasQty && (<>
-          <label className="input-label">Кількість загиблих рослин</label>
-          <input className="input" type="number" inputMode="numeric"
-            placeholder="0" value={qty} onChange={e => setQty(e.target.value)} autoFocus />
-        </>)}
+        {cfg.hasQty && (
+          <>
+            <label className="input-label">Кількість загиблих рослин</label>
+            <input className="input" type="number" inputMode="numeric"
+              placeholder="0" value={qty} onChange={e => setQty(e.target.value)} autoFocus />
+          </>
+        )}
 
-        {cfg.hasCost && (<>
-          <label className="input-label">Вартість витрат (грн)</label>
-          <input className="input" type="number" inputMode="decimal"
-            placeholder="0.00" value={cost} onChange={e => setCost(e.target.value)} />
-        </>)}
+        {cfg.hasCost && (
+          <>
+            <label className="input-label">Вартість витрат (грн)</label>
+            <input className="input" type="number" inputMode="decimal"
+              placeholder="0.00" value={cost} onChange={e => setCost(e.target.value)} />
+          </>
+        )}
 
         <label className="input-label">Нотатки</label>
         <input className="input" type="text" placeholder="Коментар..."

@@ -27,8 +27,8 @@ export default function NewBatch() {
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500) }
 
   const handleSave = async () => {
-    if (!form.variety) return showToast('⚠️ Оберіть вид рослини')
-    if (!form.qty || parseInt(form.qty) < 1) return showToast('⚠️ Вкажіть кількість')
+    if (!form.variety) return showToast('! Оберіть вид рослини')
+    if (!form.qty || parseInt(form.qty) < 1) return showToast('! Вкажіть кількість')
     setSaving(true)
     try {
       const today = new Date().toISOString().split('T')[0]
@@ -44,10 +44,10 @@ export default function NewBatch() {
         current_location: form.location,
         start_date: today,
       })
-      showToast('✅ Партію створено!')
+      showToast('✓ Партію створено')
       setTimeout(() => navigate('/batches'), 1200)
     } catch (e) {
-      showToast('❌ ' + e.message)
+      showToast('× ' + e.message)
       setSaving(false)
     }
   }
@@ -58,12 +58,10 @@ export default function NewBatch() {
 
       <div className="screen-header">
         <div className="back-btn" onClick={() => navigate(-1)}>‹</div>
-        <h2 className="screen-title">🌱 Нові живці</h2>
+        <h2 className="screen-title">Нові живці</h2>
       </div>
 
       <div className="content">
-
-        {/* Вид рослини */}
         <label className="input-label">Вид рослини</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {VARIETIES.map(v => (
@@ -89,7 +87,6 @@ export default function NewBatch() {
           ))}
         </div>
 
-        {/* Горщик */}
         <label className="input-label">Тип посуду</label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
           {POT_SIZES.map(p => (
@@ -109,7 +106,6 @@ export default function NewBatch() {
           ))}
         </div>
 
-        {/* Кількість */}
         <label className="input-label">Кількість живців</label>
         <input
           className="input"
@@ -119,7 +115,6 @@ export default function NewBatch() {
           onChange={e => set('qty', e.target.value)}
         />
 
-        {/* Розташування */}
         <label className="input-label">Де розміщено</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
           {LOCATIONS.map(l => (
@@ -140,7 +135,7 @@ export default function NewBatch() {
         </div>
 
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Збереження...' : '🌱 Створити партію'}
+          {saving ? 'Збереження...' : 'Створити партію'}
         </button>
         <button className="btn btn-ghost" onClick={() => navigate(-1)} style={{ marginTop: 10 }}>
           Скасувати

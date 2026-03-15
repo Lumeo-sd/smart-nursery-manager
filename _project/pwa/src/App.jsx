@@ -6,9 +6,9 @@ import BatchEvent from './screens/BatchEvent.jsx'
 import NewBatch from './screens/NewBatch.jsx'
 
 const NAV = [
-  { path: '/',       icon: '🏠', label: 'Головна' },
-  { path: '/batches', icon: '🌿', label: 'Партії' },
-  { path: '/sale',   icon: '🛒', label: 'Продати' },
+  { path: '/',        icon: '⌂', label: 'Головна' },
+  { path: '/batches', icon: '▦', label: 'Партії' },
+  { path: '/sale',    icon: '◧', label: 'Продати' },
 ]
 
 export default function App() {
