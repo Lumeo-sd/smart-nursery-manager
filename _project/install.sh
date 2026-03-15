@@ -113,6 +113,58 @@ ensure_compose() {
   install_pkg docker-compose-plugin || warn "Could not install docker-compose-plugin automatically"
 }
 
+get_env_value() {
+  local file="$1"
+  local key="$2"
+  if [ -f "$file" ]; then
+    grep -E "^${key}=" "$file" | tail -n 1 | cut -d '=' -f 2- || true
+  fi
+}
+
+wait_for_db() {
+  local db_cid
+  db_cid="$(docker compose $FRAPPE_COMPOSE ps -q mariadb || true)"
+  if [ -z "$db_cid" ]; then
+    warn "MariaDB container not found"
+    return 1
+  fi
+  local pass="$1"
+  local attempts="${2:-30}"
+  local delay="${3:-5}"
+  local i=1
+  while [ $i -le "$attempts" ]; do
+    if docker exec "$db_cid" mysqladmin ping -h 127.0.0.1 -p"$pass" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "$delay"
+    i=$((i+1))
+  done
+  return 1
+}
+
+create_site_if_missing() {
+  local site="${NURSERY_SITE_NAME:-frontend}"
+  local admin_pass="${NURSERY_ADMIN_PASSWORD:-admin}"
+  local db_pass
+  db_pass="$(get_env_value "$FRAPPE_DIR/.env" "DB_PASSWORD")"
+  if [ -z "$db_pass" ]; then db_pass="admin"; fi
+
+  if docker exec erpnext-backend-1 bash -c "test -d /home/frappe/frappe-bench/sites/$site"; then
+    info "Site '$site' exists"
+    return 0
+  fi
+
+  info "Waiting for MariaDB..."
+  wait_for_db "$db_pass" 36 5 || warn "MariaDB not ready yet (continue)"
+
+  info "Creating site '$site' (this may take a few minutes)..."
+  docker exec erpnext-backend-1 bash -c "\
+    bench new-site $site \
+      --mariadb-root-password $db_pass \
+      --admin-password $admin_pass \
+      --install-app erpnext"
+}
+
 ask_reinstall() {
   if [ -d "$PROJECT_DIR/.git" ] || [ -d "$FRAPPE_DIR/.git" ]; then
     echo ""
@@ -260,6 +312,8 @@ fi
 info "Starting ERPNext (may take 2–3 minutes)..."
 docker compose $FRAPPE_COMPOSE up -d
 info "ERPNext started"
+
+create_site_if_missing
 
 section "Health checks"
 info "Waiting for ERPNext..."
