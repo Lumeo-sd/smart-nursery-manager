@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smart Nursery Manager — installer
+# Smart Nursery Manager — server-first installer (single path)
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Lumeo-sd/smart-nursery-manager/main/_project/install.sh | bash
 
@@ -10,7 +10,6 @@ FRAPPE_REPO="https://github.com/frappe/frappe_docker.git"
 INSTALL_DIR="${NURSERY_DIR:-$HOME/nursery}"
 FRAPPE_DIR="$INSTALL_DIR/erpnext"
 PROJECT_DIR="$INSTALL_DIR/project"
-MODE="${NURSERY_MODE:-install}"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -23,15 +22,6 @@ error()   { echo -e "${RED}[×]${NC} $1"; exit 1; }
 section() { echo -e "\n${GREEN}--- $1 ---${NC}"; }
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
-
-# Headless/server detection
-IS_SERVER="0"
-if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
-  IS_SERVER="1"
-fi
-if [ "${NURSERY_SERVER:-}" = "1" ]; then
-  IS_SERVER="1"
-fi
 
 SUDO=""
 if [ "${EUID:-$(id -u)}" -ne 0 ] && have_cmd sudo; then
@@ -67,14 +57,6 @@ ensure_basic_tools() {
   if ! have_cmd git; then
     warn "git missing — installing"
     install_pkg git || error "Cannot install git automatically"
-  fi
-  if ! have_cmd node; then
-    warn "node missing — installing"
-    install_pkg nodejs || warn "Could not install nodejs automatically"
-  fi
-  if ! have_cmd npm; then
-    warn "npm missing — installing"
-    install_pkg npm || warn "Could not install npm automatically"
   fi
 }
 
@@ -129,35 +111,14 @@ ensure_compose() {
   install_pkg docker-compose-plugin || warn "Could not install docker-compose-plugin automatically"
 }
 
-configure_firewall() {
-  if [ "${NURSERY_FIREWALL:-}" != "1" ]; then
-    return
-  fi
-  if have_cmd ufw; then
-    warn "Configuring UFW for ports 80, 443, 8080, 8000, 3000"
-    $SUDO ufw allow 80
-    $SUDO ufw allow 443
-    $SUDO ufw allow 8080
-    $SUDO ufw allow 8000
-    $SUDO ufw allow 3000
-  else
-    warn "UFW not available — skipping firewall config"
-  fi
-}
-
 echo ""
 echo "  Smart Nursery Manager"
 echo "  Install dir: $INSTALL_DIR"
-echo "  Mode: $MODE"
 echo ""
 
 ensure_basic_tools
 ensure_docker
 ensure_compose
-if ! declare -F configure_firewall >/dev/null 2>&1; then
-  configure_firewall() { :; }
-fi
-configure_firewall
 
 section "Prepare directories"
 mkdir -p "$INSTALL_DIR"
@@ -165,28 +126,17 @@ info "Directory: $INSTALL_DIR"
 
 section "Project"
 if [ -d "$PROJECT_DIR/.git" ]; then
-  if [ "$MODE" = "update" ] || [ "$MODE" = "install" ]; then
-    warn "Project already present — updating"
-    git -C "$PROJECT_DIR" pull --ff-only
-  else
-    info "Project present — skipping update"
-  fi
+  warn "Project already present — updating"
+  git -C "$PROJECT_DIR" pull --ff-only
 else
-  if [ "$MODE" = "update" ]; then
-    error "Project missing — cannot update. Run install mode first."
-  fi
   git clone "$REPO" "$PROJECT_DIR"
   info "Project cloned"
 fi
 
 section "ERPNext"
 if [ -d "$FRAPPE_DIR/.git" ]; then
-  if [ "$MODE" = "update" ] || [ "$MODE" = "install" ]; then
-    warn "ERPNext already present — updating"
-    git -C "$FRAPPE_DIR" pull --ff-only || warn "ERPNext update failed"
-  else
-    warn "ERPNext already present — skipping update"
-  fi
+  warn "ERPNext already present — updating"
+  git -C "$FRAPPE_DIR" pull --ff-only || warn "ERPNext update failed"
 else
   git clone "$FRAPPE_REPO" "$FRAPPE_DIR"
   info "ERPNext cloned"
@@ -220,13 +170,6 @@ PWA_DIR="$PROJECT_DIR/pwa"
 docker compose -f "$PWA_DIR/docker-compose.yml" up -d --build
 info "PWA started on port 3000"
 
-if [ "${NURSERY_SKIP_PWA_DEV_DEPS:-}" != "1" ] && [ "$IS_SERVER" = "0" ]; then
-  section "PWA dev deps (optional)"
-  if [ -f "$PWA_DIR/package.json" ]; then
-    (cd "$PWA_DIR" && npm install) || warn "npm install failed"
-  fi
-fi
-
 echo ""
 echo "Done."
 echo "ERPNext: http://localhost:8080/desk"
@@ -234,14 +177,3 @@ echo "PWA:     http://localhost:3000"
 echo "MCP:     http://localhost:8000/mcp"
 echo ""
 warn "If this is the first ERPNext run, wait 2–3 minutes and open http://localhost:8080 to finish setup."
-if [ "$IS_SERVER" = "1" ]; then
-  warn "Server mode detected: no browser will be opened."
-fi
-if [ "$MODE" = "update" ]; then
-  info "Update mode completed."
-fi
-if have_cmd docker; then
-  if ! docker info >/dev/null 2>&1; then
-    warn "Docker installed but not running. Try: sudo systemctl start docker"
-  fi
-fi
