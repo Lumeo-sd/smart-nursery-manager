@@ -154,6 +154,9 @@ echo ""
 ensure_basic_tools
 ensure_docker
 ensure_compose
+if ! declare -F configure_firewall >/dev/null 2>&1; then
+  configure_firewall() { :; }
+fi
 configure_firewall
 
 section "Prepare directories"
