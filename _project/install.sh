@@ -153,6 +153,20 @@ wait_for_url() {
   return 1
 }
 
+get_host_ip() {
+  local ip=""
+  if have_cmd hostname; then
+    ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  fi
+  if [ -z "$ip" ] && have_cmd ip; then
+    ip="$(ip route get 1.1.1.1 2>/dev/null | awk '/src/ {for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
+  fi
+  if [ -z "$ip" ] && have_cmd curl; then
+    ip="$(curl -fsS https://ifconfig.me 2>/dev/null || true)"
+  fi
+  echo "$ip"
+}
+
 configure_api_envs() {
   section "API keys for MCP & PWA"
   local pwa_env="$PROJECT_DIR/pwa/.env"
@@ -288,3 +302,9 @@ echo "PWA:     http://localhost:3000"
 echo "MCP:     http://localhost:8000/mcp"
 echo ""
 warn "If this is the first ERPNext run, wait 2–3 minutes and open http://localhost:8080 to finish setup."
+host_ip="$(get_host_ip)"
+if [ -n "$host_ip" ]; then
+  info "ERPNext URL: http://${host_ip}:8080"
+  info "PWA URL:     http://${host_ip}:3000"
+  info "MCP URL:     http://${host_ip}:8000/mcp"
+fi
