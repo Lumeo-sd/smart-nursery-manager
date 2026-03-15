@@ -111,14 +111,58 @@ ensure_compose() {
   install_pkg docker-compose-plugin || warn "Could not install docker-compose-plugin automatically"
 }
 
+ask_reinstall() {
+  if [ -d "$PROJECT_DIR/.git" ] || [ -d "$FRAPPE_DIR/.git" ]; then
+    echo ""
+    warn "Existing installation detected in $INSTALL_DIR"
+    echo -n "Reinstall from scratch? (y/N): "
+    read -r reply
+    case "$reply" in
+      y|Y|yes|YES)
+        warn "Reinstalling: stopping services and removing project folders"
+        if [ -f "$FRAPPE_DIR/compose.yaml" ]; then
+          docker compose -f "$FRAPPE_DIR/compose.yaml" down || true
+        fi
+        if [ -f "$PROJECT_DIR/mcp/erpnext/docker-compose.yml" ]; then
+          docker compose -f "$PROJECT_DIR/mcp/erpnext/docker-compose.yml" down || true
+        fi
+        if [ -f "$PROJECT_DIR/pwa/docker-compose.yml" ]; then
+          docker compose -f "$PROJECT_DIR/pwa/docker-compose.yml" down || true
+        fi
+        rm -rf "$PROJECT_DIR" "$FRAPPE_DIR"
+        ;;
+      *)
+        info "Keeping existing installation — will update in place"
+        ;;
+    esac
+  fi
+}
+
+wait_for_url() {
+  local url="$1"
+  local attempts="${2:-30}"
+  local delay="${3:-5}"
+  local i=1
+  while [ $i -le "$attempts" ]; do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "$delay"
+    i=$((i+1))
+  done
+  return 1
+}
+
 echo ""
 echo "  Smart Nursery Manager"
+echo "  ---------------------"
 echo "  Install dir: $INSTALL_DIR"
 echo ""
 
 ensure_basic_tools
 ensure_docker
 ensure_compose
+ask_reinstall
 
 section "Prepare directories"
 mkdir -p "$INSTALL_DIR"
@@ -151,6 +195,14 @@ info "Starting ERPNext (may take 2–3 minutes)..."
 docker compose -f "$FRAPPE_DIR/compose.yaml" up -d
 info "ERPNext started"
 
+section "Health checks"
+info "Waiting for ERPNext..."
+if ! wait_for_url "http://localhost:8080" 36 5; then
+  warn "ERPNext not responding yet — restarting once"
+  docker compose -f "$FRAPPE_DIR/compose.yaml" restart || true
+  wait_for_url "http://localhost:8080" 24 5 || warn "ERPNext still not responding (continue)"
+fi
+
 section "MCP server"
 MCP_DIR="$PROJECT_DIR/mcp/erpnext"
 if [ ! -f "$MCP_DIR/.env" ]; then
@@ -169,6 +221,13 @@ section "PWA"
 PWA_DIR="$PROJECT_DIR/pwa"
 docker compose -f "$PWA_DIR/docker-compose.yml" up -d --build
 info "PWA started on port 3000"
+
+info "Waiting for PWA..."
+if ! wait_for_url "http://localhost:3000" 24 5; then
+  warn "PWA not responding yet — restarting once"
+  docker compose -f "$PWA_DIR/docker-compose.yml" restart || true
+  wait_for_url "http://localhost:3000" 12 5 || warn "PWA still not responding (continue)"
+fi
 
 echo ""
 echo "Done."
