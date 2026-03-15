@@ -10,7 +10,7 @@ FRAPPE_REPO="https://github.com/frappe/frappe_docker.git"
 INSTALL_DIR="${NURSERY_DIR:-$HOME/nursery}"
 FRAPPE_DIR="$INSTALL_DIR/erpnext"
 PROJECT_DIR="$INSTALL_DIR/project"
-FRAPPE_COMPOSE="-f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml"
+FRAPPE_COMPOSE="-f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml"
 PROJECT_ROOT="$PROJECT_DIR/_project"
 
 GREEN='\033[0;32m'
