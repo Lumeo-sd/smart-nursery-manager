@@ -121,6 +121,17 @@ get_env_value() {
   fi
 }
 
+set_env_value() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  if [ -f "$file" ] && grep -qE "^${key}=" "$file"; then
+    $SUDO sed -i "s#^${key}=.*#${key}=${value}#g" "$file"
+  else
+    echo "${key}=${value}" | $SUDO tee -a "$file" >/dev/null
+  fi
+}
+
 wait_for_db() {
   local db_cid
   db_cid="$(docker compose $FRAPPE_COMPOSE ps -q mariadb || true)"
@@ -163,6 +174,14 @@ create_site_if_missing() {
       --mariadb-root-password $db_pass \
       --admin-password $admin_pass \
       --install-app erpnext"
+}
+
+set_default_site() {
+  local site="${NURSERY_SITE_NAME:-frontend}"
+  docker exec erpnext-backend-1 bash -c "bench set-config -g default_site $site" || true
+  if docker ps --format '{{.Names}}' | grep -q '^erpnext-frontend-1$'; then
+    docker exec erpnext-frontend-1 bash -c "nginx -s reload" || true
+  fi
 }
 
 ask_reinstall() {
@@ -308,12 +327,15 @@ if [ ! -f "$FRAPPE_DIR/.env" ]; then
   cp "$FRAPPE_DIR/example.env" "$FRAPPE_DIR/.env"
   warn ".env created — edit $FRAPPE_DIR/.env if needed"
 fi
+set_env_value "$FRAPPE_DIR/.env" "FRAPPE_SITE_NAME_HEADER" "${NURSERY_SITE_NAME:-frontend}"
+set_env_value "$FRAPPE_DIR/.env" "SITE_NAME" "${NURSERY_SITE_NAME:-frontend}"
 
 info "Starting ERPNext (may take 2–3 minutes)..."
 docker compose $FRAPPE_COMPOSE up -d
 info "ERPNext started"
 
 create_site_if_missing
+set_default_site
 
 section "Health checks"
 info "Waiting for ERPNext..."
