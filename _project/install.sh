@@ -129,6 +129,22 @@ ensure_compose() {
   install_pkg docker-compose-plugin || warn "Could not install docker-compose-plugin automatically"
 }
 
+configure_firewall() {
+  if [ "${NURSERY_FIREWALL:-}" != "1" ]; then
+    return
+  fi
+  if have_cmd ufw; then
+    warn "Configuring UFW for ports 80, 443, 8080, 8000, 3000"
+    $SUDO ufw allow 80
+    $SUDO ufw allow 443
+    $SUDO ufw allow 8080
+    $SUDO ufw allow 8000
+    $SUDO ufw allow 3000
+  else
+    warn "UFW not available — skipping firewall config"
+  fi
+}
+
 echo ""
 echo "  Smart Nursery Manager"
 echo "  Install dir: $INSTALL_DIR"
@@ -226,18 +242,3 @@ if have_cmd docker; then
     warn "Docker installed but not running. Try: sudo systemctl start docker"
   fi
 fi
-configure_firewall() {
-  if [ "${NURSERY_FIREWALL:-}" != "1" ]; then
-    return
-  fi
-  if have_cmd ufw; then
-    warn "Configuring UFW for ports 80, 443, 8080, 8000, 3000"
-    $SUDO ufw allow 80
-    $SUDO ufw allow 443
-    $SUDO ufw allow 8080
-    $SUDO ufw allow 8000
-    $SUDO ufw allow 3000
-  else
-    warn "UFW not available — skipping firewall config"
-  fi
-}
