@@ -4,11 +4,13 @@ import BatchList from './screens/BatchList.jsx'
 import QuickSale from './screens/QuickSale.jsx'
 import BatchEvent from './screens/BatchEvent.jsx'
 import NewBatch from './screens/NewBatch.jsx'
+import Setup from './screens/Setup.jsx'
 
 const NAV = [
   { path: '/',        icon: '⌂', label: 'Головна' },
   { path: '/batches', icon: '▦', label: 'Партії' },
   { path: '/sale',    icon: '◧', label: 'Продати' },
+  { path: '/setup',   icon: '⚙', label: 'Налашт.' },
 ]
 
 export default function App() {
@@ -23,6 +25,7 @@ export default function App() {
         <Route path="/sale"    element={<QuickSale />} />
         <Route path="/event/:batchId/:type" element={<BatchEvent />} />
         <Route path="/new-batch" element={<NewBatch />} />
+        <Route path="/setup" element={<Setup />} />
       </Routes>
 
       <nav className="bottom-nav">

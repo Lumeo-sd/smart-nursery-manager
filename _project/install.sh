@@ -11,6 +11,8 @@ INSTALL_DIR="${NURSERY_DIR:-$HOME/nursery}"
 FRAPPE_DIR="$INSTALL_DIR/erpnext"
 PROJECT_DIR="$INSTALL_DIR/project"
 ERP_MODE="${NURSERY_ERP_MODE:-pwd}"
+FORCE_REINSTALL="${NURSERY_FORCE_REINSTALL:-1}"
+RESET_VOLUMES="${NURSERY_RESET_VOLUMES:-1}"
 FRAPPE_COMPOSE=""
 FRAPPE_SYSTEMD_START=""
 FRAPPE_SYSTEMD_STOP=""
@@ -326,45 +328,76 @@ ask_reinstall() {
   if [ -d "$PROJECT_DIR/.git" ] || [ -d "$FRAPPE_DIR/.git" ]; then
     echo ""
     warn "Existing installation detected in $INSTALL_DIR"
-    echo -n "Reinstall from scratch? (y/N): "
-    read -r reply
-    case "$reply" in
-      y|Y|yes|YES)
-        local reset_volumes="${NURSERY_RESET_VOLUMES:-}"
-        if [ -t 0 ] && [ -z "$reset_volumes" ]; then
-          echo -n "Remove Docker volumes (ERPNext data)? (y/N): "
-          read -r vol_reply
-          case "$vol_reply" in
-            y|Y|yes|YES) reset_volumes="1" ;;
-          esac
+    if [ "$FORCE_REINSTALL" = "1" ]; then
+      warn "Auto-reinstall enabled — removing existing stack and data"
+      local reset_volumes="$RESET_VOLUMES"
+      if [ -f "$FRAPPE_DIR/pwd.yml" ]; then
+        if [ "$reset_volumes" = "1" ]; then
+          docker compose -f "$FRAPPE_DIR/pwd.yml" down -v || true
+        else
+          docker compose -f "$FRAPPE_DIR/pwd.yml" down || true
         fi
-        warn "Reinstalling: stopping services and removing project folders"
-        if [ -f "$FRAPPE_DIR/pwd.yml" ]; then
-          if [ -n "$reset_volumes" ]; then
-            docker compose -f "$FRAPPE_DIR/pwd.yml" down -v || true
-          else
-            docker compose -f "$FRAPPE_DIR/pwd.yml" down || true
+      fi
+      if [ -f "$FRAPPE_DIR/compose.yaml" ]; then
+        if [ "$reset_volumes" = "1" ]; then
+          docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down -v || true
+        else
+          docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down || true
+        fi
+      fi
+      if [ -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" ]; then
+        docker compose -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" down || true
+      fi
+      if [ -f "$PROJECT_ROOT/pwa/docker-compose.yml" ]; then
+        docker compose -f "$PROJECT_ROOT/pwa/docker-compose.yml" down || true
+      fi
+      rm -rf "$PROJECT_DIR" "$FRAPPE_DIR"
+      return
+    fi
+
+    if [ -t 0 ]; then
+      echo -n "Reinstall from scratch? (y/N): "
+      read -r reply
+      case "$reply" in
+        y|Y|yes|YES)
+          local reset_volumes="$RESET_VOLUMES"
+          if [ -t 0 ] && [ -z "$reset_volumes" ]; then
+            echo -n "Remove Docker volumes (ERPNext data)? (y/N): "
+            read -r vol_reply
+            case "$vol_reply" in
+              y|Y|yes|YES) reset_volumes="1" ;;
+            esac
           fi
-        fi
-        if [ -f "$FRAPPE_DIR/compose.yaml" ]; then
-          if [ -n "$reset_volumes" ]; then
-            docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down -v || true
-          else
-            docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down || true
+          warn "Reinstalling: stopping services and removing project folders"
+          if [ -f "$FRAPPE_DIR/pwd.yml" ]; then
+            if [ "$reset_volumes" = "1" ]; then
+              docker compose -f "$FRAPPE_DIR/pwd.yml" down -v || true
+            else
+              docker compose -f "$FRAPPE_DIR/pwd.yml" down || true
+            fi
           fi
-        fi
-        if [ -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" ]; then
-          docker compose -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" down || true
-        fi
-        if [ -f "$PROJECT_ROOT/pwa/docker-compose.yml" ]; then
-          docker compose -f "$PROJECT_ROOT/pwa/docker-compose.yml" down || true
-        fi
-        rm -rf "$PROJECT_DIR" "$FRAPPE_DIR"
-        ;;
-      *)
-        info "Keeping existing installation — will update in place"
-        ;;
-    esac
+          if [ -f "$FRAPPE_DIR/compose.yaml" ]; then
+            if [ "$reset_volumes" = "1" ]; then
+              docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down -v || true
+            else
+              docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down || true
+            fi
+          fi
+          if [ -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" ]; then
+            docker compose -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" down || true
+          fi
+          if [ -f "$PROJECT_ROOT/pwa/docker-compose.yml" ]; then
+            docker compose -f "$PROJECT_ROOT/pwa/docker-compose.yml" down || true
+          fi
+          rm -rf "$PROJECT_DIR" "$FRAPPE_DIR"
+          ;;
+        *)
+          info "Keeping existing installation — will update in place"
+          ;;
+      esac
+    else
+      info "Non-interactive mode: keeping existing installation"
+    fi
   fi
 }
 

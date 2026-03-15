@@ -43,6 +43,11 @@ ERPNext режим:
 - Якщо потрібен production-стік:  
   `NURSERY_ERP_MODE=prod curl -fsSL https://raw.githubusercontent.com/Lumeo-sd/smart-nursery-manager/master/_project/install.sh | bash`
 
+Авто‑перевстановлення (за замовчуванням увімкнено):
+- Скрипт сам зупиняє старі стеки та **видаляє дані** для чистого запуску.
+- Якщо потрібно зберегти дані:  
+  `NURSERY_FORCE_REINSTALL=0 NURSERY_RESET_VOLUMES=0 ...`
+
 Що відбудеться:
 1. Перевірить наявність Docker
 2. Клонує репозиторій

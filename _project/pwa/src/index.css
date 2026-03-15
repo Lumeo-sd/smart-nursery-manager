@@ -259,6 +259,69 @@ body::after {
   outline: none;
   margin-bottom: 12px;
 }
+
+/* Setup */
+.setup-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  backdrop-filter: blur(12px);
+}
+.setup-label {
+  display: block;
+  margin: 8px 0 6px;
+  font-size: 13px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.setup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.setup-status {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.setup-help {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(255,255,255,0.15);
+  color: var(--text-2);
+}
+.setup-banner {
+  background: rgba(255, 210, 120, 0.14);
+  border: 1px solid rgba(255, 210, 120, 0.35);
+  color: #f2d39b;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.help-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.help-text {
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 520px) {
+  .setup-actions {
+    grid-template-columns: 1fr;
+  }
+}
 .input:focus { border-color: var(--yellow); box-shadow: 0 0 0 2px rgba(242,201,125,0.15); }
 .input-label { font-size: 13px; color: var(--text-2); margin-bottom: 6px; display: block; }
 

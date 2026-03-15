@@ -8,6 +8,62 @@
 const cleanLoc = (loc) =>
   loc ? loc.replace(/\s*-\s*SDR\s*$/, '').trim() : '—'
 
+const STORAGE_KEY = 'nursery.erpnext.auth'
+const DEFAULT_ROOT = '/api'
+
+function safeParse(json) {
+  try { return JSON.parse(json) } catch { return null }
+}
+
+export function getAuthConfig() {
+  const stored = safeParse(localStorage.getItem(STORAGE_KEY) || '')
+  const envRoot = import.meta.env.VITE_ERPNEXT_URL || ''
+  const envKey = import.meta.env.VITE_API_KEY || ''
+  const envSecret = import.meta.env.VITE_API_SECRET || ''
+
+  const url = (stored && stored.url) || envRoot || ''
+  const apiKey = (stored && stored.apiKey) || envKey || ''
+  const apiSecret = (stored && stored.apiSecret) || envSecret || ''
+
+  return {
+    url: url.trim(),
+    apiKey: apiKey.trim(),
+    apiSecret: apiSecret.trim(),
+  }
+}
+
+export function saveAuthConfig({ url = '', apiKey = '', apiSecret = '' }) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    url: url.trim(),
+    apiKey: apiKey.trim(),
+    apiSecret: apiSecret.trim(),
+  }))
+}
+
+export function clearAuthConfig() {
+  localStorage.removeItem(STORAGE_KEY)
+}
+
+export function hasAuthConfig() {
+  const { apiKey, apiSecret } = getAuthConfig()
+  return Boolean(apiKey && apiSecret)
+}
+
+function getApiRoot() {
+  const { url } = getAuthConfig()
+  if (!url) return DEFAULT_ROOT
+  return url.replace(/\/+$/, '')
+}
+
+function buildHeaders() {
+  const headers = { 'Content-Type': 'application/json' }
+  const { apiKey, apiSecret } = getAuthConfig()
+  if (apiKey && apiSecret) {
+    headers.Authorization = `token ${apiKey}:${apiSecret}`
+  }
+  return headers
+}
+
 export const EVENT_TYPES = {
   'Підгодівля':    '💧 Підгодівля',
   'Обробка':       '🧪 Обробка (пестицид/фунгіцид)',
@@ -20,23 +76,32 @@ export const EVENT_TYPES = {
 
 // ── низькорівневі ──────────────────────────────────────────
 async function getResource(doctype, params = {}) {
+  const root = getApiRoot()
   const qs = new URLSearchParams(params).toString()
-  const res = await fetch(`/api/api/resource/${encodeURIComponent(doctype)}?${qs}`)
+  const res = await fetch(
+    `${root}/api/resource/${encodeURIComponent(doctype)}?${qs}`,
+    { headers: buildHeaders() }
+  )
   if (!res.ok) throw new Error(`GET ${doctype}: ${res.status}`)
   return (await res.json()).data
 }
 
 // GET одного документу по імені — повертає повний doc з актуальним modified
 async function getDoc(doctype, name) {
-  const res = await fetch(`/api/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`)
+  const root = getApiRoot()
+  const res = await fetch(
+    `${root}/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
+    { headers: buildHeaders() }
+  )
   if (!res.ok) throw new Error(`GET ${doctype}/${name}: ${res.status}`)
   return (await res.json()).data
 }
 
 async function postResource(doctype, body) {
-  const res = await fetch(`/api/api/resource/${encodeURIComponent(doctype)}`, {
+  const root = getApiRoot()
+  const res = await fetch(`${root}/api/resource/${encodeURIComponent(doctype)}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildHeaders(),
     body: JSON.stringify(body),
   })
   if (!res.ok) {
@@ -48,9 +113,10 @@ async function postResource(doctype, body) {
 }
 
 async function callMethod(method, args = {}) {
-  const res = await fetch(`/api/api/method/${method}`, {
+  const root = getApiRoot()
+  const res = await fetch(`${root}/api/method/${method}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildHeaders(),
     body: JSON.stringify(args),
   })
   if (!res.ok) {

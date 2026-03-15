@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getDashboardStats } from '../api/erpnext.js'
+import { getDashboardStats, hasAuthConfig } from '../api/erpnext.js'
 
 const TILES = [
   { icon: '▦', label: 'Наявність',  sub: 'Всі партії',                  path: '/batches',               color: 'blue'   },
@@ -14,6 +14,7 @@ const TILES = [
 export default function Home() {
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
+  const needsSetup = !hasAuthConfig()
 
   useEffect(() => {
     getDashboardStats()
@@ -44,6 +45,11 @@ export default function Home() {
       </div>
 
       <div className="content">
+        {needsSetup && (
+          <div className="setup-banner" onClick={() => navigate('/setup')}>
+            Потрібні API ключі ERPNext — натисни, щоб додати
+          </div>
+        )}
         <div className="tile-grid">
           {TILES.map(t => (
             <div
