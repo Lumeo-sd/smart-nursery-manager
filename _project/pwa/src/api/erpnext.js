@@ -15,15 +15,30 @@ function safeParse(json) {
   try { return JSON.parse(json) } catch { return null }
 }
 
+function normalizeValue(value) {
+  if (!value) return ''
+  const trimmed = String(value).trim()
+  const lower = trimmed.toLowerCase()
+  const placeholders = new Set([
+    'your_api_key_here',
+    'your_api_secret_here',
+    'change_me',
+    'changeme',
+    'admin',
+  ])
+  if (placeholders.has(lower)) return ''
+  return trimmed
+}
+
 export function getAuthConfig() {
   const stored = safeParse(localStorage.getItem(STORAGE_KEY) || '')
   const envRoot = import.meta.env.VITE_ERPNEXT_URL || ''
   const envKey = import.meta.env.VITE_API_KEY || ''
   const envSecret = import.meta.env.VITE_API_SECRET || ''
 
-  const url = (stored && stored.url) || envRoot || ''
-  const apiKey = (stored && stored.apiKey) || envKey || ''
-  const apiSecret = (stored && stored.apiSecret) || envSecret || ''
+  const url = normalizeValue((stored && stored.url) || envRoot || '')
+  const apiKey = normalizeValue((stored && stored.apiKey) || envKey || '')
+  const apiSecret = normalizeValue((stored && stored.apiSecret) || envSecret || '')
 
   return {
     url: url.trim(),

@@ -92,6 +92,9 @@ export default function Setup() {
           <div className="help-text">
             ERPNext → Settings → My Profile → API Access → Generate Keys.
           </div>
+          <div className="help-text">
+            Leave ERPNext URL empty to use the built-in proxy.
+          </div>
           <button className="btn btn-ghost" onClick={() => navigate('/')}>
             Back to Home
           </button>
