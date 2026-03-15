@@ -303,6 +303,37 @@ if ! wait_for_url "http://localhost:3000" 24 5; then
   wait_for_url "http://localhost:3000" 12 5 || warn "PWA still not responding (continue)"
 fi
 
+section "Auto-start on reboot"
+if have_cmd systemctl; then
+  SERVICE_PATH="/etc/systemd/system/nursery-stack.service"
+  $SUDO tee "$SERVICE_PATH" >/dev/null <<EOF
+[Unit]
+Description=Smart Nursery Manager (ERPNext + MCP + PWA)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=$FRAPPE_DIR
+ExecStart=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml up -d
+ExecStart=/usr/bin/docker compose -f $PROJECT_ROOT/mcp/erpnext/docker-compose.yml up -d --build
+ExecStart=/usr/bin/docker compose -f $PROJECT_ROOT/pwa/docker-compose.yml up -d --build
+ExecStop=/usr/bin/docker compose -f $PROJECT_ROOT/pwa/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f $PROJECT_ROOT/mcp/erpnext/docker-compose.yml down
+ExecStop=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  $SUDO systemctl daemon-reload
+  $SUDO systemctl enable nursery-stack.service
+  info "Auto-start enabled (nursery-stack.service)"
+else
+  warn "systemctl not available — auto-start not configured"
+fi
+
 echo ""
 echo "Done."
 echo "ERPNext: http://localhost:8080/desk"
