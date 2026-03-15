@@ -2,7 +2,8 @@ param(
     [string]$ERPNextPath = "C:\lumeo\erpnext",
     [string]$ProjectPath = $PSScriptRoot,
     [string]$SiteName = "frontend",
-    [string]$AdminPassword = "admin"
+    [string]$AdminPassword = "admin",
+    [string]$ERPMode = "pwd"
 )
 
 $ErrorActionPreference = "Stop"
@@ -117,13 +118,18 @@ Write-Host ""
 Write-Host "[4/7] Starting ERPNext..." -ForegroundColor Yellow
 
 Push-Location $ERPNextPath
-$composeArgs = @(
-    "-f", "compose.yaml",
-    "-f", "overrides\\compose.mariadb.yaml",
-    "-f", "overrides\\compose.redis.yaml",
-    "-f", "overrides\\compose.noproxy.yaml"
-)
-docker compose @composeArgs up -d
+$pwdPath = Join-Path $ERPNextPath "pwd.yml"
+if ($ERPMode -eq "pwd" -and (Test-Path $pwdPath)) {
+    docker compose -f $pwdPath up -d
+} else {
+    $composeArgs = @(
+        "-f", "compose.yaml",
+        "-f", "overrides\\compose.mariadb.yaml",
+        "-f", "overrides\\compose.redis.yaml",
+        "-f", "overrides\\compose.noproxy.yaml"
+    )
+    docker compose @composeArgs up -d
+}
 Pop-Location
 
 Write-Host "ERPNext starting (wait ~2 minutes)" -ForegroundColor Green

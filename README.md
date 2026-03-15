@@ -38,6 +38,11 @@ irm https://raw.githubusercontent.com/Lumeo-sd/smart-nursery-manager/master/_pro
 curl -fsSL https://raw.githubusercontent.com/Lumeo-sd/smart-nursery-manager/master/_project/install.sh | bash
 ```
 
+ERPNext режим:
+- За замовчуванням використовується **офіційний `pwd.yml`** (швидкий старт, автоматичне створення site).
+- Якщо потрібен production-стік:  
+  `NURSERY_ERP_MODE=prod curl -fsSL https://raw.githubusercontent.com/Lumeo-sd/smart-nursery-manager/master/_project/install.sh | bash`
+
 Що відбудеться:
 1. Перевірить наявність Docker
 2. Клонує репозиторій

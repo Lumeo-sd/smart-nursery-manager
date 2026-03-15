@@ -10,7 +10,10 @@ FRAPPE_REPO="https://github.com/frappe/frappe_docker.git"
 INSTALL_DIR="${NURSERY_DIR:-$HOME/nursery}"
 FRAPPE_DIR="$INSTALL_DIR/erpnext"
 PROJECT_DIR="$INSTALL_DIR/project"
-FRAPPE_COMPOSE="-f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml"
+ERP_MODE="${NURSERY_ERP_MODE:-pwd}"
+FRAPPE_COMPOSE=""
+FRAPPE_SYSTEMD_START=""
+FRAPPE_SYSTEMD_STOP=""
 PROJECT_ROOT="$PROJECT_DIR/_project"
 PWA_PORT="${NURSERY_PWA_PORT:-3002}"
 
@@ -114,6 +117,24 @@ ensure_compose() {
   install_pkg docker-compose-plugin || warn "Could not install docker-compose-plugin automatically"
 }
 
+select_frappe_compose() {
+  if [ "$ERP_MODE" = "pwd" ] && [ -f "$FRAPPE_DIR/pwd.yml" ]; then
+    FRAPPE_COMPOSE="-f $FRAPPE_DIR/pwd.yml"
+    FRAPPE_SYSTEMD_START="/usr/bin/docker compose -f $FRAPPE_DIR/pwd.yml up -d"
+    FRAPPE_SYSTEMD_STOP="/usr/bin/docker compose -f $FRAPPE_DIR/pwd.yml down"
+    info "ERPNext mode: pwd.yml (official quick setup)"
+  else
+    if [ "$ERP_MODE" = "pwd" ]; then
+      warn "pwd.yml not found — using production compose"
+    fi
+    ERP_MODE="prod"
+    FRAPPE_COMPOSE="-f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml"
+    FRAPPE_SYSTEMD_START="/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml up -d"
+    FRAPPE_SYSTEMD_STOP="/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml down"
+    info "ERPNext mode: production compose"
+  fi
+}
+
 get_env_value() {
   local file="$1"
   local key="$2"
@@ -169,6 +190,28 @@ wait_for_db() {
     i=$((i+1))
   done
   return 1
+}
+
+wait_for_create_site() {
+  local cid
+  cid="$(docker compose $FRAPPE_COMPOSE ps -q create-site 2>/dev/null || true)"
+  if [ -z "$cid" ]; then
+    return 0
+  fi
+  info "Waiting for create-site to finish..."
+  local attempts=60
+  local delay=5
+  while [ $attempts -gt 0 ]; do
+    local status
+    status="$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || true)"
+    if [ "$status" = "exited" ]; then
+      return 0
+    fi
+    sleep "$delay"
+    attempts=$((attempts-1))
+  done
+  warn "create-site still running (continue)"
+  return 0
 }
 
 sql_escape() {
@@ -296,11 +339,18 @@ ask_reinstall() {
           esac
         fi
         warn "Reinstalling: stopping services and removing project folders"
+        if [ -f "$FRAPPE_DIR/pwd.yml" ]; then
+          if [ -n "$reset_volumes" ]; then
+            docker compose -f "$FRAPPE_DIR/pwd.yml" down -v || true
+          else
+            docker compose -f "$FRAPPE_DIR/pwd.yml" down || true
+          fi
+        fi
         if [ -f "$FRAPPE_DIR/compose.yaml" ]; then
           if [ -n "$reset_volumes" ]; then
-            docker compose $FRAPPE_COMPOSE down -v || true
+            docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down -v || true
           else
-            docker compose $FRAPPE_COMPOSE down || true
+            docker compose -f "$FRAPPE_DIR/compose.yaml" -f "$FRAPPE_DIR/overrides/compose.mariadb.yaml" -f "$FRAPPE_DIR/overrides/compose.redis.yaml" -f "$FRAPPE_DIR/overrides/compose.noproxy.yaml" down || true
           fi
         fi
         if [ -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" ]; then
@@ -437,11 +487,17 @@ fi
 set_env_value "$FRAPPE_DIR/.env" "FRAPPE_SITE_NAME_HEADER" "${NURSERY_SITE_NAME:-frontend}"
 set_env_value "$FRAPPE_DIR/.env" "SITE_NAME" "${NURSERY_SITE_NAME:-frontend}"
 
-info "Starting ERPNext (may take 2–3 minutes)..."
+select_frappe_compose
+
+info "Starting ERPNext ($ERP_MODE) (may take 2–3 minutes)..."
 docker compose $FRAPPE_COMPOSE up -d
 info "ERPNext started"
 
-create_site_if_missing
+if [ "$ERP_MODE" = "pwd" ]; then
+  wait_for_create_site
+else
+  create_site_if_missing
+fi
 set_default_site
 ensure_db_user
 
@@ -490,6 +546,9 @@ fi
 
 section "Auto-start on reboot"
 if have_cmd systemctl; then
+  if [ -z "$FRAPPE_SYSTEMD_START" ] || [ -z "$FRAPPE_SYSTEMD_STOP" ]; then
+    select_frappe_compose
+  fi
   SERVICE_PATH="/etc/systemd/system/nursery-stack.service"
   $SUDO tee "$SERVICE_PATH" >/dev/null <<EOF
 [Unit]
@@ -501,12 +560,12 @@ Requires=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=$FRAPPE_DIR
-ExecStart=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml up -d
+ExecStart=$FRAPPE_SYSTEMD_START
 ExecStart=/usr/bin/docker compose -f $PROJECT_ROOT/mcp/erpnext/docker-compose.yml up -d --build
 ExecStart=/usr/bin/docker compose -f $PROJECT_ROOT/pwa/docker-compose.yml up -d --build
 ExecStop=/usr/bin/docker compose -f $PROJECT_ROOT/pwa/docker-compose.yml down
 ExecStop=/usr/bin/docker compose -f $PROJECT_ROOT/mcp/erpnext/docker-compose.yml down
-ExecStop=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml down
+ExecStop=$FRAPPE_SYSTEMD_STOP
 TimeoutStartSec=0
 
 [Install]
