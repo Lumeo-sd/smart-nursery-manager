@@ -17,10 +17,11 @@ export default function Home() {
   const needsSetup = !hasAuthConfig()
 
   useEffect(() => {
+    if (needsSetup) return
     getDashboardStats()
       .then(setStats)
       .catch(() => setStats(null))
-  }, [])
+  }, [needsSetup])
 
   const dateStr = new Date().toLocaleDateString('uk-UA', {
     weekday: 'long', day: 'numeric', month: 'long'

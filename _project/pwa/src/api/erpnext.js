@@ -11,6 +11,26 @@ const cleanLoc = (loc) =>
 const STORAGE_KEY = 'nursery.erpnext.auth'
 const DEFAULT_ROOT = '/api'
 
+function emit(name, detail = {}) {
+  if (typeof window === 'undefined') return
+  try {
+    window.dispatchEvent(new CustomEvent(name, { detail }))
+  } catch {
+    // Ignore event issues (older browsers / locked down env).
+  }
+}
+
+function maybeAuthRedirect(res) {
+  if (!res) return
+  if (res.status === 401 || res.status === 403) {
+    emit('nursery:auth-required', {
+      status: res.status,
+      url: res.url,
+      hasAuth: hasAuthConfig(),
+    })
+  }
+}
+
 function safeParse(json) {
   try { return JSON.parse(json) } catch { return null }
 }
@@ -25,6 +45,10 @@ function normalizeValue(value) {
     'change_me',
     'changeme',
     'admin',
+    'http://localhost:8080',
+    'https://localhost:8080',
+    'http://127.0.0.1:8080',
+    'https://127.0.0.1:8080',
   ])
   if (placeholders.has(lower)) return ''
   return trimmed
@@ -53,10 +77,12 @@ export function saveAuthConfig({ url = '', apiKey = '', apiSecret = '' }) {
     apiKey: apiKey.trim(),
     apiSecret: apiSecret.trim(),
   }))
+  emit('nursery:auth-changed', { hasAuth: hasAuthConfig() })
 }
 
 export function clearAuthConfig() {
   localStorage.removeItem(STORAGE_KEY)
+  emit('nursery:auth-changed', { hasAuth: false })
 }
 
 export function hasAuthConfig() {
@@ -97,6 +123,7 @@ async function getResource(doctype, params = {}) {
     `${root}/api/resource/${encodeURIComponent(doctype)}?${qs}`,
     { headers: buildHeaders() }
   )
+  maybeAuthRedirect(res)
   if (!res.ok) throw new Error(`GET ${doctype}: ${res.status}`)
   return (await res.json()).data
 }
@@ -108,6 +135,7 @@ async function getDoc(doctype, name) {
     `${root}/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
     { headers: buildHeaders() }
   )
+  maybeAuthRedirect(res)
   if (!res.ok) throw new Error(`GET ${doctype}/${name}: ${res.status}`)
   return (await res.json()).data
 }
@@ -119,6 +147,7 @@ async function postResource(doctype, body) {
     headers: buildHeaders(),
     body: JSON.stringify(body),
   })
+  maybeAuthRedirect(res)
   if (!res.ok) {
     let msg = `${res.status}`
     try { const j = await res.json(); msg = j.exception || j.exc_type || msg } catch {}
@@ -134,12 +163,24 @@ async function callMethod(method, args = {}) {
     headers: buildHeaders(),
     body: JSON.stringify(args),
   })
+  maybeAuthRedirect(res)
   if (!res.ok) {
     let msg = `${res.status}`
     try { const j = await res.json(); msg = j.exception || j.exc_type || msg } catch {}
     throw new Error(msg)
   }
   return (await res.json()).message
+}
+
+export async function getLoggedUser() {
+  const root = getApiRoot()
+  const res = await fetch(`${root}/api/method/frappe.auth.get_logged_user`, {
+    headers: buildHeaders(),
+  })
+  maybeAuthRedirect(res)
+  if (!res.ok) throw new Error(`GET logged_user: ${res.status}`)
+  const body = await res.json()
+  return body.message
 }
 
 /**

@@ -16,13 +16,18 @@ export default function Setup() {
     setStatus('Testing connection...')
     try {
       const root = (url || '/api').replace(/\/+$/, '')
-      const res = await fetch(`${root}/api/method/ping`, {
+      const res = await fetch(`${root}/api/method/frappe.auth.get_logged_user`, {
         headers: {
           Authorization: apiKey && apiSecret ? `token ${apiKey}:${apiSecret}` : '',
         },
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setStatus('ERPNext OK')
+      const body = await res.json()
+      if (body && body.message && body.message !== 'Guest') {
+        setStatus(`Auth OK: ${body.message}`)
+      } else {
+        setStatus('ERPNext reachable, but auth failed (Guest). Check key/secret.')
+      }
     } catch (err) {
       setStatus(`Connection failed: ${err.message}`)
     } finally {
@@ -33,6 +38,9 @@ export default function Setup() {
   function save() {
     saveAuthConfig({ url, apiKey, apiSecret })
     setStatus('Saved')
+    if (apiKey && apiSecret) {
+      navigate('/')
+    }
   }
 
   function reset() {
