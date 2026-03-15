@@ -10,6 +10,7 @@ FRAPPE_REPO="https://github.com/frappe/frappe_docker.git"
 INSTALL_DIR="${NURSERY_DIR:-$HOME/nursery}"
 FRAPPE_DIR="$INSTALL_DIR/erpnext"
 PROJECT_DIR="$INSTALL_DIR/project"
+PROJECT_ROOT="$PROJECT_DIR/_project"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -169,8 +170,8 @@ get_host_ip() {
 
 configure_api_envs() {
   section "API keys for MCP & PWA"
-  local pwa_env="$PROJECT_DIR/pwa/.env"
-  local mcp_env="$PROJECT_DIR/mcp/erpnext/.env"
+  local pwa_env="$PROJECT_ROOT/pwa/.env"
+  local mcp_env="$PROJECT_ROOT/mcp/erpnext/.env"
 
   local pwa_url="${NURSERY_ERPNEXT_URL:-http://localhost:8080}"
   local mcp_url="${NURSERY_ERPNEXT_URL_MCP:-http://host.docker.internal:8080}"
@@ -261,30 +262,37 @@ info "ERPNext started"
 
 section "Health checks"
 info "Waiting for ERPNext..."
-if ! wait_for_url "http://localhost:8080" 36 5; then
+if ! wait_for_url "http://localhost:8080/api/method/ping" 36 5; then
   warn "ERPNext not responding yet — restarting once"
   docker compose -f "$FRAPPE_DIR/compose.yaml" restart || true
-  wait_for_url "http://localhost:8080" 24 5 || warn "ERPNext still not responding (continue)"
+  wait_for_url "http://localhost:8080/api/method/ping" 24 5 || warn "ERPNext still not responding (continue)"
 fi
 
 configure_api_envs
 
 section "MCP server"
-MCP_DIR="$PROJECT_DIR/mcp/erpnext"
+MCP_DIR="$PROJECT_ROOT/mcp/erpnext"
 if [ ! -f "$MCP_DIR/.env" ]; then
-  cp "$MCP_DIR/.env.example" "$MCP_DIR/.env"
+  if [ -f "$MCP_DIR/.env.example" ]; then
+    cp "$MCP_DIR/.env.example" "$MCP_DIR/.env"
+  else
+    warn "MCP .env.example not found — skipping MCP setup"
+    MCP_DIR=""
+  fi
+fi
+if [ -n "$MCP_DIR" ] && [ ! -f "$MCP_DIR/.env" ]; then
   warn "MCP needs API keys:"
   warn "1) Open ERPNext: http://localhost:8080"
   warn "2) Settings → My Profile → API Access → Generate Keys"
   warn "3) Paste keys into: $MCP_DIR/.env"
   warn "4) Run: docker compose -f $MCP_DIR/docker-compose.yml up -d --build"
-else
+elif [ -n "$MCP_DIR" ]; then
   docker compose -f "$MCP_DIR/docker-compose.yml" up -d --build
   info "MCP started on port 8000"
 fi
 
 section "PWA"
-PWA_DIR="$PROJECT_DIR/pwa"
+PWA_DIR="$PROJECT_ROOT/pwa"
 docker compose -f "$PWA_DIR/docker-compose.yml" up -d --build
 info "PWA started on port 3000"
 
