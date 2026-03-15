@@ -96,6 +96,15 @@ install_docker_linux() {
 
 ensure_docker() {
   if have_cmd docker; then
+    if ! docker info >/dev/null 2>&1; then
+      warn "Docker installed but not running — trying to start service"
+      if have_cmd systemctl; then
+        $SUDO systemctl start docker || true
+        $SUDO systemctl enable docker || true
+      elif have_cmd service; then
+        $SUDO service docker start || true
+      fi
+    fi
     docker info >/dev/null 2>&1 || error "Docker installed but not running. Start Docker and retry."
     return
   fi
@@ -211,6 +220,11 @@ if [ "$IS_SERVER" = "1" ]; then
 fi
 if [ "$MODE" = "update" ]; then
   info "Update mode completed."
+fi
+if have_cmd docker; then
+  if ! docker info >/dev/null 2>&1; then
+    warn "Docker installed but not running. Try: sudo systemctl start docker"
+  fi
 fi
 configure_firewall() {
   if [ "${NURSERY_FIREWALL:-}" != "1" ]; then
