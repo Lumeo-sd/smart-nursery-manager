@@ -10,6 +10,7 @@ FRAPPE_REPO="https://github.com/frappe/frappe_docker.git"
 INSTALL_DIR="${NURSERY_DIR:-$HOME/nursery}"
 FRAPPE_DIR="$INSTALL_DIR/erpnext"
 PROJECT_DIR="$INSTALL_DIR/project"
+FRAPPE_COMPOSE="-f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml"
 PROJECT_ROOT="$PROJECT_DIR/_project"
 
 GREEN='\033[0;32m'
@@ -122,7 +123,7 @@ ask_reinstall() {
       y|Y|yes|YES)
         warn "Reinstalling: stopping services and removing project folders"
         if [ -f "$FRAPPE_DIR/compose.yaml" ]; then
-          docker compose -f "$FRAPPE_DIR/compose.yaml" down || true
+          docker compose $FRAPPE_COMPOSE down || true
         fi
         if [ -f "$PROJECT_DIR/mcp/erpnext/docker-compose.yml" ]; then
           docker compose -f "$PROJECT_DIR/mcp/erpnext/docker-compose.yml" down || true
@@ -257,14 +258,14 @@ if [ ! -f "$FRAPPE_DIR/.env" ]; then
 fi
 
 info "Starting ERPNext (may take 2–3 minutes)..."
-docker compose -f "$FRAPPE_DIR/compose.yaml" up -d
+docker compose $FRAPPE_COMPOSE up -d
 info "ERPNext started"
 
 section "Health checks"
 info "Waiting for ERPNext..."
 if ! wait_for_url "http://localhost:8080/api/method/ping" 36 5; then
   warn "ERPNext not responding yet — restarting once"
-  docker compose -f "$FRAPPE_DIR/compose.yaml" restart || true
+  docker compose $FRAPPE_COMPOSE restart || true
   wait_for_url "http://localhost:8080/api/method/ping" 24 5 || warn "ERPNext still not responding (continue)"
 fi
 
