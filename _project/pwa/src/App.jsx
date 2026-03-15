@@ -1,4 +1,6 @@
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { hasAuthConfig } from './api/erpnext.js'
 import Home from './screens/Home.jsx'
 import BatchList from './screens/BatchList.jsx'
 import QuickSale from './screens/QuickSale.jsx'
@@ -16,6 +18,12 @@ const NAV = [
 export default function App() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+
+  useEffect(() => {
+    if (!hasAuthConfig() && pathname !== '/setup') {
+      navigate('/setup', { replace: true })
+    }
+  }, [pathname, navigate])
 
   return (
     <div className="app">
