@@ -12,6 +12,7 @@ FRAPPE_DIR="$INSTALL_DIR/erpnext"
 PROJECT_DIR="$INSTALL_DIR/project"
 FRAPPE_COMPOSE="-f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml"
 PROJECT_ROOT="$PROJECT_DIR/_project"
+PWA_PORT="${NURSERY_PWA_PORT:-3002}"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -132,9 +133,26 @@ set_env_value() {
   fi
 }
 
+get_db_container() {
+  local cid=""
+  cid="$(docker compose $FRAPPE_COMPOSE ps -q db 2>/dev/null || true)"
+  if [ -z "$cid" ]; then
+    cid="$(docker compose $FRAPPE_COMPOSE ps -q mariadb 2>/dev/null || true)"
+  fi
+  echo "$cid"
+}
+
+get_backend_container() {
+  docker compose $FRAPPE_COMPOSE ps -q backend 2>/dev/null || true
+}
+
+get_frontend_container() {
+  docker compose $FRAPPE_COMPOSE ps -q frontend 2>/dev/null || true
+}
+
 wait_for_db() {
   local db_cid
-  db_cid="$(docker compose $FRAPPE_COMPOSE ps -q mariadb || true)"
+  db_cid="$(get_db_container)"
   if [ -z "$db_cid" ]; then
     warn "MariaDB container not found"
     return 1
@@ -153,6 +171,70 @@ wait_for_db() {
   return 1
 }
 
+sql_escape() {
+  echo "$1" | sed "s/'/''/g"
+}
+
+get_site_db_value() {
+  local site="$1"
+  local key="$2"
+  local backend_cid
+  backend_cid="$(get_backend_container)"
+  if [ -z "$backend_cid" ]; then
+    return 0
+  fi
+  docker exec "$backend_cid" python - "$site" "$key" <<'PY'
+import json, sys
+site = sys.argv[1]
+key = sys.argv[2]
+path = f"/home/frappe/frappe-bench/sites/{site}/site_config.json"
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    print(data.get(key, ""))
+except Exception:
+    pass
+PY
+}
+
+ensure_db_user() {
+  local site="${NURSERY_SITE_NAME:-frontend}"
+  local db_root
+  db_root="$(get_env_value "$FRAPPE_DIR/.env" "DB_PASSWORD")"
+  if [ -z "$db_root" ]; then db_root="admin"; fi
+
+  local db_cid
+  db_cid="$(get_db_container)"
+  if [ -z "$db_cid" ]; then
+    warn "MariaDB container not found for DB user sync"
+    return 0
+  fi
+
+  local db_name db_user db_pass
+  db_name="$(get_site_db_value "$site" "db_name")"
+  db_user="$(get_site_db_value "$site" "db_user")"
+  db_pass="$(get_site_db_value "$site" "db_password")"
+
+  if [ -z "$db_name" ] || [ -z "$db_user" ] || [ -z "$db_pass" ]; then
+    warn "DB credentials not found in site_config.json (skip DB user sync)"
+    return 0
+  fi
+
+  local db_name_esc db_user_esc db_pass_esc
+  db_name_esc="$(sql_escape "$db_name")"
+  db_user_esc="$(sql_escape "$db_user")"
+  db_pass_esc="$(sql_escape "$db_pass")"
+
+  info "Ensuring MariaDB user for site '$site'"
+  docker exec -i "$db_cid" mariadb -u root -p"$db_root" <<SQL
+CREATE DATABASE IF NOT EXISTS \`$db_name_esc\`;
+CREATE USER IF NOT EXISTS '$db_user_esc'@'%' IDENTIFIED BY '$db_pass_esc';
+ALTER USER '$db_user_esc'@'%' IDENTIFIED BY '$db_pass_esc';
+GRANT ALL PRIVILEGES ON \`$db_name_esc\`.* TO '$db_user_esc'@'%';
+FLUSH PRIVILEGES;
+SQL
+}
+
 create_site_if_missing() {
   local site="${NURSERY_SITE_NAME:-frontend}"
   local admin_pass="${NURSERY_ADMIN_PASSWORD:-admin}"
@@ -160,7 +242,14 @@ create_site_if_missing() {
   db_pass="$(get_env_value "$FRAPPE_DIR/.env" "DB_PASSWORD")"
   if [ -z "$db_pass" ]; then db_pass="admin"; fi
 
-  if docker exec erpnext-backend-1 bash -c "test -d /home/frappe/frappe-bench/sites/$site"; then
+  local backend_cid
+  backend_cid="$(get_backend_container)"
+  if [ -z "$backend_cid" ]; then
+    warn "Backend container not found (skip site check)"
+    return 0
+  fi
+
+  if docker exec "$backend_cid" bash -c "test -d /home/frappe/frappe-bench/sites/$site"; then
     info "Site '$site' exists"
     return 0
   fi
@@ -169,7 +258,7 @@ create_site_if_missing() {
   wait_for_db "$db_pass" 36 5 || warn "MariaDB not ready yet (continue)"
 
   info "Creating site '$site' (this may take a few minutes)..."
-  docker exec erpnext-backend-1 bash -c "\
+  docker exec "$backend_cid" bash -c "\
     bench new-site $site \
       --mariadb-root-password $db_pass \
       --admin-password $admin_pass \
@@ -178,9 +267,15 @@ create_site_if_missing() {
 
 set_default_site() {
   local site="${NURSERY_SITE_NAME:-frontend}"
-  docker exec erpnext-backend-1 bash -c "bench set-config -g default_site $site" || true
-  if docker ps --format '{{.Names}}' | grep -q '^erpnext-frontend-1$'; then
-    docker exec erpnext-frontend-1 bash -c "nginx -s reload" || true
+  local backend_cid
+  backend_cid="$(get_backend_container)"
+  if [ -n "$backend_cid" ]; then
+    docker exec "$backend_cid" bash -c "bench set-config -g default_site $site" || true
+  fi
+  local frontend_cid
+  frontend_cid="$(get_frontend_container)"
+  if [ -n "$frontend_cid" ]; then
+    docker exec "$frontend_cid" bash -c "nginx -s reload" || true
   fi
 }
 
@@ -192,15 +287,27 @@ ask_reinstall() {
     read -r reply
     case "$reply" in
       y|Y|yes|YES)
+        local reset_volumes="${NURSERY_RESET_VOLUMES:-}"
+        if [ -t 0 ] && [ -z "$reset_volumes" ]; then
+          echo -n "Remove Docker volumes (ERPNext data)? (y/N): "
+          read -r vol_reply
+          case "$vol_reply" in
+            y|Y|yes|YES) reset_volumes="1" ;;
+          esac
+        fi
         warn "Reinstalling: stopping services and removing project folders"
         if [ -f "$FRAPPE_DIR/compose.yaml" ]; then
-          docker compose $FRAPPE_COMPOSE down || true
+          if [ -n "$reset_volumes" ]; then
+            docker compose $FRAPPE_COMPOSE down -v || true
+          else
+            docker compose $FRAPPE_COMPOSE down || true
+          fi
         fi
-        if [ -f "$PROJECT_DIR/mcp/erpnext/docker-compose.yml" ]; then
-          docker compose -f "$PROJECT_DIR/mcp/erpnext/docker-compose.yml" down || true
+        if [ -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" ]; then
+          docker compose -f "$PROJECT_ROOT/mcp/erpnext/docker-compose.yml" down || true
         fi
-        if [ -f "$PROJECT_DIR/pwa/docker-compose.yml" ]; then
-          docker compose -f "$PROJECT_DIR/pwa/docker-compose.yml" down || true
+        if [ -f "$PROJECT_ROOT/pwa/docker-compose.yml" ]; then
+          docker compose -f "$PROJECT_ROOT/pwa/docker-compose.yml" down || true
         fi
         rm -rf "$PROJECT_DIR" "$FRAPPE_DIR"
         ;;
@@ -336,6 +443,7 @@ info "ERPNext started"
 
 create_site_if_missing
 set_default_site
+ensure_db_user
 
 section "Health checks"
 info "Waiting for ERPNext..."
@@ -371,13 +479,13 @@ fi
 section "PWA"
 PWA_DIR="$PROJECT_ROOT/pwa"
 docker compose -f "$PWA_DIR/docker-compose.yml" up -d --build
-info "PWA started on port 3000"
+info "PWA started on port $PWA_PORT"
 
 info "Waiting for PWA..."
-if ! wait_for_url "http://localhost:3000" 24 5; then
+if ! wait_for_url "http://localhost:$PWA_PORT" 24 5; then
   warn "PWA not responding yet — restarting once"
   docker compose -f "$PWA_DIR/docker-compose.yml" restart || true
-  wait_for_url "http://localhost:3000" 12 5 || warn "PWA still not responding (continue)"
+  wait_for_url "http://localhost:$PWA_PORT" 12 5 || warn "PWA still not responding (continue)"
 fi
 
 section "Auto-start on reboot"
@@ -393,12 +501,12 @@ Requires=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=$FRAPPE_DIR
-ExecStart=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml up -d
+ExecStart=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml up -d
 ExecStart=/usr/bin/docker compose -f $PROJECT_ROOT/mcp/erpnext/docker-compose.yml up -d --build
 ExecStart=/usr/bin/docker compose -f $PROJECT_ROOT/pwa/docker-compose.yml up -d --build
 ExecStop=/usr/bin/docker compose -f $PROJECT_ROOT/pwa/docker-compose.yml down
 ExecStop=/usr/bin/docker compose -f $PROJECT_ROOT/mcp/erpnext/docker-compose.yml down
-ExecStop=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml down
+ExecStop=/usr/bin/docker compose -f $FRAPPE_DIR/compose.yaml -f $FRAPPE_DIR/overrides/compose.mariadb.yaml -f $FRAPPE_DIR/overrides/compose.redis.yaml -f $FRAPPE_DIR/overrides/compose.noproxy.yaml down
 TimeoutStartSec=0
 
 [Install]
@@ -414,13 +522,13 @@ fi
 echo ""
 echo "Done."
 echo "ERPNext: http://localhost:8080/desk"
-echo "PWA:     http://localhost:3000"
+echo "PWA:     http://localhost:$PWA_PORT"
 echo "MCP:     http://localhost:8000/mcp"
 echo ""
 warn "If this is the first ERPNext run, wait 2–3 minutes and open http://localhost:8080 to finish setup."
 host_ip="$(get_host_ip)"
 if [ -n "$host_ip" ]; then
   info "ERPNext URL: http://${host_ip}:8080"
-  info "PWA URL:     http://${host_ip}:3000"
+  info "PWA URL:     http://${host_ip}:$PWA_PORT"
   info "MCP URL:     http://${host_ip}:8000/mcp"
 fi
