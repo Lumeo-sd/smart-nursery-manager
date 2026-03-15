@@ -153,6 +153,56 @@ wait_for_url() {
   return 1
 }
 
+configure_api_envs() {
+  section "API keys for MCP & PWA"
+  local pwa_env="$PROJECT_DIR/pwa/.env"
+  local mcp_env="$PROJECT_DIR/mcp/erpnext/.env"
+
+  local pwa_url="${NURSERY_ERPNEXT_URL:-http://localhost:8080}"
+  local mcp_url="${NURSERY_ERPNEXT_URL_MCP:-http://host.docker.internal:8080}"
+  local api_key="${NURSERY_API_KEY:-}"
+  local api_secret="${NURSERY_API_SECRET:-}"
+
+  if [ -t 0 ]; then
+    echo -n "ERPNext URL for PWA [${pwa_url}]: "
+    read -r in_pwa_url
+    if [ -n "$in_pwa_url" ]; then pwa_url="$in_pwa_url"; fi
+
+    echo -n "ERPNext URL for MCP [${mcp_url}]: "
+    read -r in_mcp_url
+    if [ -n "$in_mcp_url" ]; then mcp_url="$in_mcp_url"; fi
+
+    if [ -z "$api_key" ]; then
+      echo -n "ERPNext API key (leave empty to skip): "
+      read -r api_key
+    fi
+    if [ -z "$api_secret" ]; then
+      echo -n "ERPNext API secret (leave empty to skip): "
+      read -r api_secret
+    fi
+  fi
+
+  if [ -n "$api_key" ] && [ -n "$api_secret" ]; then
+    if [ -f "$pwa_env" ]; then cp "$pwa_env" "$pwa_env.bak" || true; fi
+    cat > "$pwa_env" <<EOF
+VITE_ERPNEXT_URL=$pwa_url
+VITE_API_KEY=$api_key
+VITE_API_SECRET=$api_secret
+EOF
+    info "PWA .env written"
+
+    if [ -f "$mcp_env" ]; then cp "$mcp_env" "$mcp_env.bak" || true; fi
+    cat > "$mcp_env" <<EOF
+ERPNEXT_URL=$mcp_url
+ERPNEXT_API_KEY=$api_key
+ERPNEXT_API_SECRET=$api_secret
+EOF
+    info "MCP .env written"
+  else
+    warn "API keys not provided — skipping .env write (you can edit later)"
+  fi
+}
+
 echo ""
 echo "  Smart Nursery Manager"
 echo "  ---------------------"
@@ -202,6 +252,8 @@ if ! wait_for_url "http://localhost:8080" 36 5; then
   docker compose -f "$FRAPPE_DIR/compose.yaml" restart || true
   wait_for_url "http://localhost:8080" 24 5 || warn "ERPNext still not responding (continue)"
 fi
+
+configure_api_envs
 
 section "MCP server"
 MCP_DIR="$PROJECT_DIR/mcp/erpnext"
